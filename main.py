@@ -36,8 +36,8 @@ class MainWindow(QMainWindow):
         self.buttons = {}
         button_info = {
             "Home": "home-icon.png",
-            "Cadastrar Pessoa": "register-icon.png",
-            "Consultar Pessoas": "search-icon.png",
+            "Cadastrar Currículo": "register-icon.png",
+            "Consultar Currículos": "search-icon.png",
             "Configurações": "settings-icon.png",
             "Sair": "exit-icon.png"
         }
@@ -82,10 +82,10 @@ class MainWindow(QMainWindow):
 
         if screen_name == "Home":
             self.content_area.setCurrentIndex(0)
-        elif screen_name == "Cadastrar Pessoa":
+        elif screen_name == "Cadastrar Currículo":
             self.content_area.setCurrentIndex(1)  # Alterado para o índice correto da tela de cadastro
-        elif screen_name == "Consultar Pessoas":
-            self.content_area.addWidget(QLabel("Tela de Consulta de Pessoas"))
+        elif screen_name == "Consultar Currículos":
+            self.content_area.addWidget(QLabel("Tela de Consulta de Currículos"))
             self.content_area.setCurrentIndex(2)
         elif screen_name == "Configurações":
             # Exibe o widget de configurações
