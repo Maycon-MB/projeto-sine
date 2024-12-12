@@ -1,103 +1,73 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFormLayout, QLineEdit, QTextEdit,
-    QPushButton, QHBoxLayout, QMessageBox, QGridLayout
+    QWidget, QVBoxLayout, QLabel, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox
 )
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent, QIcon
-import psycopg2
 import re
-
-
-class DatabaseHandler:
-    def __init__(self, dbname, user, password, host):
-        self.dbname = dbname
-        self.user = user
-        self.password = password
-        self.host = host
-
-    def connect(self):
-        try:
-            return psycopg2.connect(
-                dbname=self.dbname,
-                user=self.user,
-                password=self.password,
-                host=self.host
-            )
-        except Exception as e:
-            raise ConnectionError(f"Erro ao conectar ao banco de dados: {e}")
-
-    def is_duplicate(self, nome, telefone):
-        try:
-            conn = self.connect()
-            cursor = conn.cursor()
-            cursor.execute(
-                "SELECT COUNT(*) FROM pessoas WHERE nome = %s OR telefone = %s",
-                (nome, telefone)
-            )
-            result = cursor.fetchone()
-            cursor.close()
-            conn.close()
-            return result[0] > 0
-        except Exception as e:
-            raise RuntimeError(f"Erro ao verificar duplicidade: {e}")
-
-    def insert_pessoa(self, nome, idade, telefone, experiencia, escolaridade, servicos):
-        try:
-            conn = self.connect()
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO pessoas (nome, idade, telefone, experiencia, escolaridade, servicos_realizados)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (nome, idade, telefone, experiencia, escolaridade, servicos))
-            conn.commit()
-            cursor.close()
-            conn.close()
-        except Exception as e:
-            raise RuntimeError(f"Erro ao inserir dados: {e}")
+from database.connection import DatabaseConnection
+from database.models import CurriculoModel
 
 class CadastroWidget(QWidget):
     def __init__(self):
         super().__init__()
-        self.db_handler = DatabaseHandler(
-            dbname="projeto-sine",
+        self.setup_ui()
+        self.db_connection = DatabaseConnection(
+            dbname="projeto_sine",
             user="postgres",
             password="admin",
             host="localhost"
         )
-        self.setup_ui()
+        self.curriculo_model = CurriculoModel(self.db_connection)
 
     def setup_ui(self):
+        self.experiencia_count = 0
+        self.max_experiencias = 3
+
         main_layout = QVBoxLayout(self)
 
+        # Título
         title_label = QLabel("Cadastro de Currículo")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 22px; font-weight: bold; margin-bottom: 1px;")
+        title_label.setStyleSheet("font-size: 26px; font-weight: bold; margin-bottom: 10px;")
         main_layout.addWidget(title_label)
 
+        # Formulário
         form_layout = QGridLayout()
-        form_layout.setSpacing(10)
+        form_layout.setSpacing(15)
 
-        # Campos do formulário
         self.nome_input = self.create_line_edit("Digite o nome completo", "Nome:", form_layout, 0)
-        self.idade_input = self.create_line_edit("Digite a idade", "Idade:", form_layout, 1)
+        self.idade_input = self.create_spin_box("Idade:", form_layout, 1)
         self.telefone_input = self.create_line_edit("Digite o telefone (ex: (XX) XXXXX-XXXX)", "Telefone:", form_layout, 2)
+        self.telefone_input.textChanged.connect(self.atualizar_telefone)
         self.escolaridade_input = self.create_line_edit("Digite a escolaridade", "Escolaridade:", form_layout, 3)
 
-        self.experiencia_input = self.create_text_edit("Digite a experiência profissional ou observações", "Experiência:", form_layout, 4)
-        self.servicos_input = self.create_text_edit("Digite os serviços realizados", "Serviços Realizados:", form_layout, 5)
+        # Área de Experiência
+        experiencia_label = QLabel("Experiência")
+        experiencia_label.setStyleSheet("font-size: 20px; font-weight: bold; margin-top: 15px;")
+        form_layout.addWidget(experiencia_label, 4, 0, 1, 2)
+
+        self.experiencias_layout = QVBoxLayout()
+        form_layout.addLayout(self.experiencias_layout, 5, 0, 1, 2)
+
+        self.add_experiencia_button = QPushButton("Adicionar Experiência")
+        self.add_experiencia_button.clicked.connect(self.add_experiencia)
+        form_layout.addWidget(self.add_experiencia_button, 6, 0, 1, 2)
 
         main_layout.addLayout(form_layout)
+
+        # Adiciona o campo de experiência inicial
+        self.add_experiencia()
 
         # Botões
         button_layout = QHBoxLayout()
         self.cadastrar_button = QPushButton("Cadastrar")
         self.cadastrar_button.clicked.connect(self.cadastrar_dados)
-        self.cadastrar_button.setStyleSheet("background-color: #0073CF; color: white; padding: 10px;")
+        self.cadastrar_button.setStyleSheet("background-color: #0073CF; color: white; padding: 10px; font-size: 16px;")
         self.cadastrar_button.setIcon(QIcon("icons/save.png"))
 
         self.limpar_button = QPushButton("Limpar")
         self.limpar_button.clicked.connect(self.limpar_formulario)
-        self.limpar_button.setStyleSheet("background-color: #dcdcdc; color: black; padding: 10px;")
+        self.limpar_button.setStyleSheet("background-color: #dcdcdc; color: black; padding: 10px; font-size: 16px;")
         self.limpar_button.setIcon(QIcon("icons/clear.png"))
 
         button_layout.addWidget(self.cadastrar_button)
@@ -107,35 +77,76 @@ class CadastroWidget(QWidget):
     def create_line_edit(self, placeholder, label, layout, row):
         line_edit = QLineEdit()
         line_edit.setPlaceholderText(placeholder)
-        line_edit.installEventFilter(self)  # Instala o Event Filter para capturar Enter
+        line_edit.setStyleSheet("font-size: 16px; height: 30px;")
+        line_edit.installEventFilter(self)  # Captura Enter
         layout.addWidget(QLabel(label), row, 0)
         layout.addWidget(line_edit, row, 1)
         return line_edit
 
-    def create_text_edit(self, placeholder, label, layout, row):
-        text_edit = QTextEdit()
-        text_edit.setPlaceholderText(placeholder)
-        text_edit.installEventFilter(self)  # Instala o Event Filter para capturar Enter
-        text_edit.setFixedHeight(100)
+    def create_spin_box(self, label, layout, row):
+        spin_box = QSpinBox()
+        spin_box.setRange(0, 120)  # Definindo intervalo de idades possíveis
+        spin_box.setButtonSymbols(QSpinBox.NoButtons)  # Remove os botões de seta
+        spin_box.setStyleSheet("font-size: 16px; height: 30px;")
+        spin_box.installEventFilter(self)  # Captura Enter
         layout.addWidget(QLabel(label), row, 0)
-        layout.addWidget(text_edit, row, 1)
-        return text_edit
+        layout.addWidget(spin_box, row, 1)
+        return spin_box
 
-    def eventFilter(self, source, event):
-        if event.type() == QEvent.KeyPress and event.key() == Qt.Key_Return:
-            self.focusNextChild()  # Move o foco para o próximo widget
-            return True
-        return super().eventFilter(source, event)
+    def add_experiencia(self):
+        if self.experiencia_count >= self.max_experiencias:
+            QMessageBox.warning(self, "Erro", "Você pode adicionar no máximo 3 experiências.")
+            return
+
+        layout = QHBoxLayout()
+        cargo_input = QLineEdit()
+        cargo_input.setPlaceholderText("Cargo")
+        cargo_input.setStyleSheet("font-size: 16px; height: 30px;")
+        cargo_input.installEventFilter(self)
+
+        tempo_input = QSpinBox()
+        tempo_input.setRange(0, 50)
+        tempo_input.setSuffix(" ano(s)")
+        tempo_input.setStyleSheet("font-size: 16px; height: 30px;")
+        tempo_input.installEventFilter(self)
+
+        remove_button = QPushButton("Remover")
+        remove_button.setStyleSheet("font-size: 16px; height: 30px;")
+        remove_button.clicked.connect(lambda: self.remove_experiencia(layout))
+
+        layout.addWidget(QLabel(f"Cargo {self.experiencia_count + 1}:", self))
+        layout.addWidget(cargo_input)
+        layout.addWidget(QLabel("Tempo:", self))
+        layout.addWidget(tempo_input)
+        layout.addWidget(remove_button)
+
+        self.experiencias_layout.addLayout(layout)
+        self.experiencia_count += 1
+
+    def remove_experiencia(self, layout):
+        for i in reversed(range(layout.count())):
+            widget = layout.itemAt(i).widget()
+            if widget:
+                widget.deleteLater()
+        self.experiencias_layout.removeItem(layout)
+        self.experiencia_count -= 1
 
     def cadastrar_dados(self):
         nome = self.nome_input.text().strip()
-        idade = self.idade_input.text().strip()
+        idade = self.idade_input.value()  # Capturando valor do QSpinBox
         telefone = self.telefone_input.text().strip()
         escolaridade = self.escolaridade_input.text().strip()
-        experiencia = self.experiencia_input.toPlainText().strip()
-        servicos = self.servicos_input.toPlainText().strip()
 
-        if not nome or not idade or not telefone or not escolaridade:
+        # Coletar experiências
+        experiencias = []
+        for i in range(self.experiencias_layout.count()):
+            layout = self.experiencias_layout.itemAt(i).layout()
+            cargo = layout.itemAt(1).widget().text()
+            tempo = layout.itemAt(3).widget().value()
+            if cargo:
+                experiencias.append((cargo, tempo))
+
+        if not nome or not telefone or not escolaridade:
             QMessageBox.warning(self, "Erro", "Por favor, preencha todos os campos obrigatórios.")
             return
 
@@ -144,15 +155,17 @@ class CadastroWidget(QWidget):
             return
 
         try:
-            if self.db_handler.is_duplicate(nome, telefone):
-                QMessageBox.warning(self, "Erro", "Pessoa já cadastrada com este nome ou telefone.")
+            if self.curriculo_model.is_duplicate(nome, telefone):
+                QMessageBox.warning(self, "Erro", "Currículo com o mesmo nome ou telefone já cadastrado.")
                 return
 
-            self.db_handler.insert_pessoa(nome, idade, telefone, experiencia, escolaridade, servicos)
+            self.curriculo_model.insert_curriculo(
+                nome, idade, telefone, escolaridade, experiencias
+            )
             QMessageBox.information(self, "Sucesso", "Dados cadastrados com sucesso!")
             self.limpar_formulario()
         except Exception as e:
-            QMessageBox.critical(self, "Erro", str(e))
+            QMessageBox.critical(self, "Erro", f"Falha ao cadastrar os dados: {e}")
 
     def limpar_formulario(self):
         resposta = QMessageBox.question(
@@ -161,12 +174,49 @@ class CadastroWidget(QWidget):
         )
         if resposta == QMessageBox.Yes:
             self.nome_input.clear()
-            self.idade_input.clear()
+            self.idade_input.setValue(0)  # Reseta o valor do QSpinBox para 0
             self.telefone_input.clear()
             self.escolaridade_input.clear()
-            self.experiencia_input.clear()
-            self.servicos_input.clear()
+            while self.experiencias_layout.count():
+                layout = self.experiencias_layout.takeAt(0).layout()
+                self.remove_experiencia(layout)
+            self.add_experiencia()  # Reinsere o campo inicial obrigatório
 
     def validar_telefone(self, telefone):
         pattern = r"^\(\d{2}\) \d{4,5}-\d{4}$"
         return re.match(pattern, telefone)
+
+    def atualizar_telefone(self, texto):
+        self.telefone_input.blockSignals(True)
+        self.telefone_input.setText(self.formatar_telefone(texto))
+        self.telefone_input.blockSignals(False)
+
+    def formatar_telefone(self, valor_atual):
+        # Remove todos os caracteres não numéricos
+        valor_formatado = ''.join(filter(str.isdigit, valor_atual))
+
+        # Se o número de telefone tiver exatamente 9 dígitos, adicione o formato 0 0000-0000
+        if len(valor_formatado) == 9:
+            valor_formatado = f'{valor_formatado[0]} {valor_formatado[1:5]}-{valor_formatado[5:]}'
+        # Se o número de telefone tiver exatamente 11 dígitos, adicione o formato (00) 0 0000-0000        
+        elif len(valor_formatado) == 11:
+            valor_formatado = f'({valor_formatado[:2]}) {valor_formatado[2]} {valor_formatado[3:7]}-{valor_formatado[7:]}'
+        # Se o número de telefone tiver exatamente 8 dígitos, adicione o formato 0000-0000
+        elif len(valor_formatado) == 8:
+            valor_formatado = f'{valor_formatado[:4]}-{valor_formatado[4:]}'
+
+        return valor_formatado
+
+    def eventFilter(self, source, event):
+        if event.type() == QEvent.KeyPress and isinstance(event, QKeyEvent):
+            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+                if source == self.escolaridade_input:
+                    if self.experiencias_layout.count() > 0:
+                        layout = self.experiencias_layout.itemAt(0).layout()
+                        cargo_input = layout.itemAt(1).widget()
+                        cargo_input.setFocus()
+                        return True
+                else:
+                    self.focusNextChild()
+                    return True
+        return super().eventFilter(source, event)
