@@ -29,6 +29,7 @@ class MainWindow(QMainWindow):
         self.sidebar = QWidget()
         self.sidebar.setFixedWidth(200)
         self.sidebar_layout = QVBoxLayout(self.sidebar)
+        self.sidebar.setStyleSheet("background-color: #191970;")  # Azul meia-noite
         self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
         self.sidebar_layout.setSpacing(10)
 
