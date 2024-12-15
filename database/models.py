@@ -23,3 +23,22 @@ class CurriculoModel:
             SELECT * FROM curriculos WHERE id = %s
         """
         return self.db.execute_query(query, (curriculo_id,), fetch_one=True)
+
+    def fetch_all_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None):
+        query = "SELECT * FROM curriculos WHERE 1=1"
+        params = []
+
+        if nome:
+            query += " AND nome ILIKE %s"
+            params.append(f"%{nome}%")
+        if escolaridade:
+            query += " AND escolaridade = %s"
+            params.append(escolaridade)
+        if idade_min:
+            query += " AND idade >= %s"
+            params.append(idade_min)
+        if idade_max:
+            query += " AND idade <= %s"
+            params.append(idade_max)
+
+        return self.db.execute_query(query, tuple(params), fetch_all=True)
