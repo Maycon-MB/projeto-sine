@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox
+    QWidget, QVBoxLayout, QLabel, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QComboBox
 )
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent, QIcon
@@ -36,10 +36,15 @@ class CadastroWidget(QWidget):
         form_layout.setSpacing(15)
 
         self.nome_input = self.create_line_edit("Digite o nome completo", "Nome:", form_layout, 0)
-        self.idade_input = self.create_spin_box("Idade:", form_layout, 1)
+        self.nome_input.textChanged.connect(self.verificar_nome_existente)
+        self.nome_status_label = QLabel()
+        form_layout.addWidget(self.nome_status_label, 0, 2)
+
+        self.idade_input, self.idade_placeholder = self.create_spin_box("Idade:", form_layout, 1)
         self.telefone_input = self.create_line_edit("Digite o telefone (ex: (XX) XXXXX-XXXX)", "Telefone:", form_layout, 2)
         self.telefone_input.textChanged.connect(self.atualizar_telefone)
-        self.escolaridade_input = self.create_line_edit("Digite a escolaridade", "Escolaridade:", form_layout, 3)
+        
+        self.escolaridade_input = self.create_combo_box("Escolaridade:", form_layout, 3)
 
         # Área de Experiência
         experiencia_label = QLabel("Experiência")
@@ -79,19 +84,73 @@ class CadastroWidget(QWidget):
         line_edit.setPlaceholderText(placeholder)
         line_edit.setStyleSheet("font-size: 16px; height: 30px;")
         line_edit.installEventFilter(self)  # Captura Enter
+        line_edit.textChanged.connect(lambda text: line_edit.setText(text.upper()))  # Uppercase automático
         layout.addWidget(QLabel(label), row, 0)
         layout.addWidget(line_edit, row, 1)
         return line_edit
 
     def create_spin_box(self, label, layout, row):
+        container = QWidget()
+        container_layout = QHBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+
         spin_box = QSpinBox()
-        spin_box.setRange(0, 120)  # Definindo intervalo de idades possíveis
-        spin_box.setButtonSymbols(QSpinBox.NoButtons)  # Remove os botões de seta
+        spin_box.setRange(0, 120)
+        spin_box.setButtonSymbols(QSpinBox.NoButtons)
         spin_box.setStyleSheet("font-size: 16px; height: 30px;")
-        spin_box.installEventFilter(self)  # Captura Enter
+        spin_box.installEventFilter(self)
+        
+        placeholder_label = QLabel("apenas números")
+        placeholder_label.setStyleSheet("color: gray; font-size: 14px; position: absolute;")
+        placeholder_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+
+        spin_box.valueChanged.connect(lambda: placeholder_label.setVisible(spin_box.value() == 0))
+
+        container_layout.addWidget(spin_box)
+        container_layout.addWidget(placeholder_label)
+
         layout.addWidget(QLabel(label), row, 0)
-        layout.addWidget(spin_box, row, 1)
-        return spin_box
+        layout.addWidget(container, row, 1)
+        return spin_box, placeholder_label
+
+    def create_combo_box(self, label, layout, row):
+        combo_box = QComboBox()
+        combo_box.setEditable(True)
+        combo_box.setStyleSheet("font-size: 16px; height: 30px;")
+        combo_box.addItems([
+            "ENSINO FUNDAMENTAL",
+            "ENSINO MÉDIO INCOMPLETO",
+            "ENSINO MÉDIO COMPLETO",
+            "ENSINO SUPERIOR INCOMPLETO",
+            "ENSINO SUPERIOR COMPLETO",
+            "PÓS-GRADUAÇÃO/MBA",
+            "MESTRADO",
+            "DOUTORADO"
+        ])
+        combo_box.installEventFilter(self)  # Captura Enter no ComboBox
+        if combo_box.isEditable():
+            combo_box.lineEdit().installEventFilter(self)  # Captura Enter no LineEdit interno
+            combo_box.lineEdit().textChanged.connect(lambda text: combo_box.lineEdit().setText(text.upper()))  # Uppercase automático
+        
+        layout.addWidget(QLabel(label), row, 0)
+        layout.addWidget(combo_box, row, 1)
+        return combo_box
+
+    def verificar_nome_existente(self):
+        nome = self.nome_input.text().strip()
+        if nome:
+            try:
+                if self.curriculo_model.is_duplicate_nome(nome):
+                    self.nome_status_label.setText("Nome já cadastrado.")
+                    self.nome_status_label.setStyleSheet("color: red;")
+                else:
+                    self.nome_status_label.setText("Nome disponível.")
+                    self.nome_status_label.setStyleSheet("color: green;")
+            except Exception as e:
+                self.nome_status_label.setText("Erro ao verificar nome.")
+                self.nome_status_label.setStyleSheet("color: orange;")
+        else:
+            self.nome_status_label.clear()
 
     def add_experiencia(self):
         if self.experiencia_count >= self.max_experiencias:
@@ -103,6 +162,7 @@ class CadastroWidget(QWidget):
         cargo_input.setPlaceholderText("Cargo")
         cargo_input.setStyleSheet("font-size: 16px; height: 30px;")
         cargo_input.installEventFilter(self)
+        cargo_input.textChanged.connect(lambda text: cargo_input.setText(text.upper()))  # Uppercase automático
 
         tempo_input = QSpinBox()
         tempo_input.setRange(0, 50)
@@ -135,7 +195,7 @@ class CadastroWidget(QWidget):
         nome = self.nome_input.text().strip()
         idade = self.idade_input.value()  # Capturando valor do QSpinBox
         telefone = self.telefone_input.text().strip()
-        escolaridade = self.escolaridade_input.text().strip()
+        escolaridade = self.escolaridade_input.currentText().strip()
 
         # Coletar experiências
         experiencias = []
@@ -176,7 +236,7 @@ class CadastroWidget(QWidget):
             self.nome_input.clear()
             self.idade_input.setValue(0)  # Reseta o valor do QSpinBox para 0
             self.telefone_input.clear()
-            self.escolaridade_input.clear()
+            self.escolaridade_input.setCurrentIndex(0)
             while self.experiencias_layout.count():
                 layout = self.experiencias_layout.takeAt(0).layout()
                 self.remove_experiencia(layout)
@@ -209,14 +269,18 @@ class CadastroWidget(QWidget):
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.KeyPress and isinstance(event, QKeyEvent):
-            if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
                 if source == self.escolaridade_input:
+                    # Mover o foco diretamente para o campo cargo1
                     if self.experiencias_layout.count() > 0:
-                        layout = self.experiencias_layout.itemAt(0).layout()
-                        cargo_input = layout.itemAt(1).widget()
-                        cargo_input.setFocus()
-                        return True
+                        primeiro_experiencia_layout = self.experiencias_layout.itemAt(0).layout()
+                        cargo1_input = primeiro_experiencia_layout.itemAt(1).widget()  # O campo de cargo1
+                        if cargo1_input:
+                            cargo1_input.setFocus()
+                            return True
                 else:
-                    self.focusNextChild()
+                    self.focusNextPrevChild(True)
                     return True
         return super().eventFilter(source, event)
+
+
