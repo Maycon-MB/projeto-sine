@@ -1,93 +1,78 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QLineEdit, QPushButton, QTableWidget, QTableWidgetItem,
-    QComboBox, QSpinBox
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QTableWidget, QTableWidgetItem, QComboBox, QSpinBox
 )
+from PySide6.QtCore import Qt
 from database.models import CurriculoModel
-from database.connection import DatabaseConnection
 
 class ConsultaWidget(QWidget):
-    def __init__(self):
+    def __init__(self, db_connection):
         super().__init__()
-        self.setup_ui()
-        self.setup_database()
+        self.db_connection = db_connection
+        self.curriculo_model = CurriculoModel(self.db_connection)
 
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
+        self.setWindowTitle("Consultar Currículos")
+
+        # Layout principal
+        layout = QVBoxLayout()
 
         # Filtros
-        filters_layout = QHBoxLayout()
-        
-        filters_layout.addWidget(QLabel("Nome:"))
+        filter_layout = QHBoxLayout()
+
         self.nome_input = QLineEdit()
-        filters_layout.addWidget(self.nome_input)
+        self.nome_input.setPlaceholderText("Nome")
+        filter_layout.addWidget(QLabel("Nome:"))
+        filter_layout.addWidget(self.nome_input)
 
-        filters_layout.addWidget(QLabel("Escolaridade:"))
         self.escolaridade_input = QComboBox()
-        self.escolaridade_input.addItems(["", "Ensino Fundamental", "Ensino Médio", "Ensino Superior", "Pós-Graduação"])
-        filters_layout.addWidget(self.escolaridade_input)
+        self.escolaridade_input.addItems(["", "Ensino Fundamental", "Ensino Médio", "Ensino Superior"])
+        filter_layout.addWidget(QLabel("Escolaridade:"))
+        filter_layout.addWidget(self.escolaridade_input)
 
-        filters_layout.addWidget(QLabel("Idade Mínima:"))
         self.idade_min_input = QSpinBox()
-        self.idade_min_input.setMinimum(0)
-        filters_layout.addWidget(self.idade_min_input)
+        self.idade_min_input.setRange(0, 120)
+        self.idade_min_input.setPlaceholderText("Idade Min")
+        filter_layout.addWidget(QLabel("Idade Mínima:"))
+        filter_layout.addWidget(self.idade_min_input)
 
-        filters_layout.addWidget(QLabel("Idade Máxima:"))
         self.idade_max_input = QSpinBox()
-        self.idade_max_input.setMinimum(0)
-        filters_layout.addWidget(self.idade_max_input)
+        self.idade_max_input.setRange(0, 120)
+        self.idade_max_input.setPlaceholderText("Idade Max")
+        filter_layout.addWidget(QLabel("Idade Máxima:"))
+        filter_layout.addWidget(self.idade_max_input)
 
-        search_button = QPushButton("Buscar")
-        search_button.clicked.connect(self.search_curriculos)
-        filters_layout.addWidget(search_button)
+        self.search_button = QPushButton("Buscar")
+        self.search_button.clicked.connect(self.search_curriculos)
+        filter_layout.addWidget(self.search_button)
 
-        layout.addLayout(filters_layout)
+        layout.addLayout(filter_layout)
 
         # Tabela de resultados
-        self.result_table = QTableWidget()
-        self.result_table.setColumnCount(5)
-        self.result_table.setHorizontalHeaderLabels(["ID", "Nome", "Idade", "Telefone", "Escolaridade"])
-        layout.addWidget(self.result_table)
+        self.table = QTableWidget()
+        self.table.setColumnCount(4)
+        self.table.setHorizontalHeaderLabels(["Nome", "Idade", "Telefone", "Escolaridade"])
+        layout.addWidget(self.table)
 
-        # Botão para editar
-        edit_button = QPushButton("Editar Selecionado")
-        edit_button.clicked.connect(self.edit_selected)
-        layout.addWidget(edit_button)
-
-    def setup_database(self):
-        # Configurar conexão com o banco e modelo
-        self.db_connection = DatabaseConnection(
-            dbname="BOLETOS", user="postgres", password="postgres", host="192.168.1.163"
-        )
-        self.curriculo_model = CurriculoModel(self.db_connection)
+        self.setLayout(layout)
 
     def search_curriculos(self):
         nome = self.nome_input.text()
         escolaridade = self.escolaridade_input.currentText()
-        idade_min = self.idade_min_input.value()
-        idade_max = self.idade_max_input.value()
+        idade_min = self.idade_min_input.value() or None
+        idade_max = self.idade_max_input.value() or None
 
         results = self.curriculo_model.fetch_all_curriculos(
             nome=nome,
             escolaridade=escolaridade if escolaridade else None,
-            idade_min=idade_min if idade_min > 0 else None,
-            idade_max=idade_max if idade_max > 0 else None
+            idade_min=idade_min,
+            idade_max=idade_max
         )
 
         self.populate_table(results)
 
-    def populate_table(self, data):
-        self.result_table.setRowCount(len(data))
-        for row_idx, row_data in enumerate(data):
-            self.result_table.setItem(row_idx, 0, QTableWidgetItem(str(row_data['id'])))
-            self.result_table.setItem(row_idx, 1, QTableWidgetItem(row_data['nome']))
-            self.result_table.setItem(row_idx, 2, QTableWidgetItem(str(row_data['idade'])))
-            self.result_table.setItem(row_idx, 3, QTableWidgetItem(row_data['telefone']))
-            self.result_table.setItem(row_idx, 4, QTableWidgetItem(row_data['escolaridade']))
-
-    def edit_selected(self):
-        selected_row = self.result_table.currentRow()
-        if selected_row >= 0:
-            curriculo_id = self.result_table.item(selected_row, 0).text()
-            print(f"Editar o currículo com ID: {curriculo_id}")
-            # Aqui você pode abrir a tela de edição e carregar os dados correspondentes
+    def populate_table(self, results):
+        self.table.setRowCount(len(results))
+        for row_idx, row in enumerate(results):
+            self.table.setItem(row_idx, 0, QTableWidgetItem(row['nome']))
+            self.table.setItem(row_idx, 1, QTableWidgetItem(str(row['idade'])))
+            self.table.setItem(row_idx, 2, QTableWidgetItem(row['telefone']))
+            self.table.setItem(row_idx, 3, QTableWidgetItem(row['escolaridade']))

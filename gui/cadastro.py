@@ -248,24 +248,27 @@ class CadastroWidget(QWidget):
 
     def atualizar_telefone(self, texto):
         self.telefone_input.blockSignals(True)
-        self.telefone_input.setText(self.formatar_telefone(texto))
+        formatado = self.formatar_telefone(texto)
+        print(f"Telefone formatado: {formatado}")  # Debug
+        self.telefone_input.setText(formatado)
         self.telefone_input.blockSignals(False)
 
     def formatar_telefone(self, valor_atual):
         # Remove todos os caracteres não numéricos
         valor_formatado = ''.join(filter(str.isdigit, valor_atual))
 
-        # Se o número de telefone tiver exatamente 9 dígitos, adicione o formato 0 0000-0000
-        if len(valor_formatado) == 9:
-            valor_formatado = f'{valor_formatado[0]} {valor_formatado[1:5]}-{valor_formatado[5:]}'
-        # Se o número de telefone tiver exatamente 11 dígitos, adicione o formato (00) 0 0000-0000        
-        elif len(valor_formatado) == 11:
-            valor_formatado = f'({valor_formatado[:2]}) {valor_formatado[2]} {valor_formatado[3:7]}-{valor_formatado[7:]}'
-        # Se o número de telefone tiver exatamente 8 dígitos, adicione o formato 0000-0000
-        elif len(valor_formatado) == 8:
-            valor_formatado = f'{valor_formatado[:4]}-{valor_formatado[4:]}'
+        # Se o número de telefone tiver 11 dígitos (formato padrão com DDD e dígito extra)
+        if len(valor_formatado) == 11:
+            return f'({valor_formatado[:2]}) {valor_formatado[2:7]}-{valor_formatado[7:]}'
+        # Se o número de telefone tiver 10 dígitos (formato padrão com DDD sem dígito extra)
+        elif len(valor_formatado) == 10:
+            return f'({valor_formatado[:2]}) {valor_formatado[2:6]}-{valor_formatado[6:]}'
+        # Se o número de telefone tiver 8 ou 9 dígitos (sem DDD)
+        elif len(valor_formatado) in (8, 9):
+            return f'{valor_formatado[:len(valor_formatado)-4]}-{valor_formatado[-4:]}'
+        # Retorna o valor não formatado caso o tamanho seja inválido
+        return valor_atual
 
-        return valor_formatado
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.KeyPress and isinstance(event, QKeyEvent):
