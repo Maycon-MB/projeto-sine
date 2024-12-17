@@ -48,8 +48,8 @@ class ConsultaWidget(QWidget):
 
         # Tabela de resultados
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Nome", "Idade", "Telefone", "Escolaridade"])
+        self.table.setColumnCount(5)  # Ajustado para incluir todas as colunas necessárias
+        self.table.setHorizontalHeaderLabels(["Nome", "Idade", "Telefone", "Escolaridade", "Serviço"])  # Nova coluna
         layout.addWidget(self.table)
 
         self.setLayout(layout)
@@ -76,3 +76,4 @@ class ConsultaWidget(QWidget):
             self.table.setItem(row_idx, 1, QTableWidgetItem(str(row['idade'])))
             self.table.setItem(row_idx, 2, QTableWidgetItem(row['telefone']))
             self.table.setItem(row_idx, 3, QTableWidgetItem(row['escolaridade']))
+            self.table.setItem(row_idx, 4, QTableWidgetItem(row['servico']))  # Nova coluna para serviço
