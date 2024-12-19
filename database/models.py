@@ -71,22 +71,47 @@ class CurriculoModel:
                 raise
 
     def fetch_filtered_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None):
-        """
-        Busca currículos com filtros otimizados utilizando a procedure do banco.
-        """
         query = """
-        SELECT * FROM consultar_curriculos(%s, %s, %s, %s);
+        SELECT c.id AS curriculo_id,
+            c.nome,
+            c.idade,
+            c.telefone,
+            c.escolaridade,
+            e.cargo,
+            e.anos_experiencia
+        FROM curriculo c
+        LEFT JOIN experiencias e ON c.id = e.id_curriculo
+        WHERE (%s IS NULL OR c.nome ILIKE %s)
+        AND (%s IS NULL OR c.escolaridade = %s)
+        AND (%s IS NULL OR c.idade >= %s)
+        AND (%s IS NULL OR c.idade <= %s)
         """
-        params = (nome, escolaridade, idade_min, idade_max)
+        params = (
+            nome, f"%{nome}%" if nome else None,
+            escolaridade, escolaridade,
+            idade_min, idade_min,
+            idade_max, idade_max
+        )
+
+        # Debug
+        print("Consulta SQL:")
+        print(query)
+        print("Parâmetros:")
+        print(params)
+
         try:
-            return self.db.execute_query(query, params, fetch_all=True)
+            results = self.db.execute_query(query, params, fetch_all=True)
+            print("Resultados retornados:")
+            print(results)
+            return results
         except Exception as e:
             print(f"Erro ao buscar currículos: {e}")
             return []
 
+
     def insert_curriculo(self, nome, idade, telefone, escolaridade):
         """
-        Insere um novo currículo no banco de dados.
+        Insere um novo currículo no banco de dados e retorna o ID gerado.
         """
         query = """
         INSERT INTO curriculo (nome, idade, telefone, escolaridade)
@@ -98,23 +123,23 @@ class CurriculoModel:
             return result['id']
         except Exception as e:
             print(f"Erro ao inserir currículo: {e}")
-            return None
+            raise
 
-    def insert_experiencia(self, id_curriculo, cargo, anos_experiencia):
+    def insert_experiencias(self, id_curriculo, experiencias):
         """
-        Insere uma nova experiência profissional vinculada a um currículo.
+        Insere experiências relacionadas a um currículo, se houver.
         """
         query = """
         INSERT INTO experiencias (id_curriculo, cargo, anos_experiencia)
-        VALUES (%s, %s, %s)
-        RETURNING id;
+        VALUES (%s, %s, %s);
         """
         try:
-            result = self.db.execute_query(query, (id_curriculo, cargo, anos_experiencia), fetch_one=True)
-            return result['id']
+            for cargo, anos_experiencia in experiencias:
+                self.db.execute_query(query, (id_curriculo, cargo, anos_experiencia))
         except Exception as e:
-            print(f"Erro ao inserir experiência: {e}")
-            return None
+            print(f"Erro ao inserir experiências: {e}")
+            raise
+
 
     def fetch_experiencias(self, id_curriculo):
         """
