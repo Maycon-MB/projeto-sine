@@ -193,7 +193,7 @@ class CadastroWidget(QWidget):
 
     def cadastrar_dados(self):
         nome = self.nome_input.text().strip()
-        idade = self.idade_input.value()  # Capturando valor do QSpinBox
+        idade = self.idade_input.value()
         telefone = self.telefone_input.text().strip()
         escolaridade = self.escolaridade_input.currentText().strip()
 
@@ -201,9 +201,9 @@ class CadastroWidget(QWidget):
         experiencias = []
         for i in range(self.experiencias_layout.count()):
             layout = self.experiencias_layout.itemAt(i).layout()
-            cargo = layout.itemAt(1).widget().text()
+            cargo = layout.itemAt(1).widget().text().strip()
             tempo = layout.itemAt(3).widget().value()
-            if cargo:
+            if cargo:  # Apenas adicionar experiências com cargos preenchidos
                 experiencias.append((cargo, tempo))
 
         if not nome or not telefone or not escolaridade:
@@ -215,17 +215,23 @@ class CadastroWidget(QWidget):
             return
 
         try:
+            # Verificar duplicidade
             if self.curriculo_model.is_duplicate(nome, telefone):
                 QMessageBox.warning(self, "Erro", "Currículo com o mesmo nome ou telefone já cadastrado.")
                 return
 
-            self.curriculo_model.insert_curriculo(
-                nome, idade, telefone, escolaridade, experiencias
-            )
+            # Inserir currículo
+            curriculo_id = self.curriculo_model.insert_curriculo(nome, idade, telefone, escolaridade)
+
+            # Inserir experiências, se houver
+            if experiencias:
+                self.curriculo_model.insert_experiencias(curriculo_id, experiencias)
+
             QMessageBox.information(self, "Sucesso", "Dados cadastrados com sucesso!")
             self.limpar_formulario()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Falha ao cadastrar os dados: {e}")
+
 
     def limpar_formulario(self):
         resposta = QMessageBox.question(
@@ -285,5 +291,4 @@ class CadastroWidget(QWidget):
                     self.focusNextPrevChild(True)
                     return True
         return super().eventFilter(source, event)
-
 

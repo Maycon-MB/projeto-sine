@@ -1,17 +1,36 @@
+import os
+from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QPushButton, QLabel
 )
 from PySide6.QtCore import Qt, QSize
-from PySide6.QtGui import QIcon
-from gui.configuracoes import ConfiguracoesWidget  # Certifique-se de que o arquivo `configuracoes.py` está no mesmo diretório
-from gui.cadastro import CadastroWidget  # Certifique-se de que o arquivo `cadastro.py` está no mesmo diretório
+from PySide6.QtSvgWidgets import QSvgWidget
+from gui.configuracoes import ConfiguracoesWidget
+from gui.cadastro import CadastroWidget
+from gui.consulta import ConsultaWidget
+from database.connection import DatabaseConnection
 
+
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Aplicação com Sidebar")
         self.resize(1200, 600)
+
+        # Diretório base do projeto
+        self.base_dir = Path(__file__).resolve().parent
+        self.icons_dir = self.base_dir / "assets" / "icons"
+
+        # Conexão com o banco de dados
+        self.db_connection = DatabaseConnection(
+            dbname="projeto_sine",
+            user="postgres",
+            password="admin",
+            host="localhost"
+        )
 
         # Carregar configurações salvas
         config = ConfiguracoesWidget.load_configurations()
@@ -29,73 +48,76 @@ class MainWindow(QMainWindow):
         self.sidebar = QWidget()
         self.sidebar.setFixedWidth(200)
         self.sidebar_layout = QVBoxLayout(self.sidebar)
-        self.sidebar.setStyleSheet("background-color: #191970;")  # Azul meia-noite
+        self.sidebar.setStyleSheet("background-color: #191970;")
         self.sidebar_layout.setContentsMargins(0, 0, 0, 0)
         self.sidebar_layout.setSpacing(10)
 
         # Botões da Sidebar
         self.buttons = {}
-        button_info = {
-            "Home": "home-icon.png",
-            "Cadastrar Currículo": "register-icon.png",
-            "Consultar Currículos": "search-icon.png",
-            "Configurações": "settings-icon.png",
-            "Sair": "exit-icon.png"
+        self.button_info = {
+            "Home": "home-icon",
+            "Cadastrar Currículo": "register-icon",
+            "Consultar Currículos": "search-icon",
+            "Configurações": "settings-icon",
+            "Sair": "exit-icon"
         }
 
-        for name, icon_path in button_info.items():
+        for name, icon_base in self.button_info.items():
             btn = QPushButton(name)
-            btn.setIcon(QIcon(icon_path))
-            btn.setIconSize(QSize(24, 24))
+            # Use QIcon para associar o ícone diretamente ao botão
+            icon_path = self._get_icon_path(icon_base)
+            icon = QIcon(icon_path)  # Cria um QIcon a partir do SVG
+            btn.setIcon(icon)  # Define o ícone diretamente no botão
+            btn.setIconSize(QSize(24, 24))  # Define o tamanho do ícone
             btn.setStyleSheet(self._button_stylesheet())
             btn.setCheckable(True)
             btn.clicked.connect(lambda _, n=name: self._navigate(n))
             self.sidebar_layout.addWidget(btn)
-            self.buttons[name] = btn
+            self.buttons[name] = btn  # Salva o botão para atualizações futuras
 
-        self.sidebar_layout.addStretch()  # Adiciona um espaçamento flexível ao final
+        self.sidebar_layout.addStretch()
         main_layout.addWidget(self.sidebar)
 
         # Área de conteúdo principal
         self.content_area = QStackedWidget()
-        self.content_area.addWidget(QLabel("Bem-vindo ao sistema!"))  # Tela inicial padrão
+        self.content_area.addWidget(QLabel("Bem-vindo ao sistema!"))
 
-        # Adiciona a tela de cadastro
-        self.cadastro_widget = CadastroWidget()  # Aqui cria a tela de cadastro
+        self.cadastro_widget = CadastroWidget()
         self.content_area.addWidget(self.cadastro_widget)
 
-        # Adiciona a tela de configurações
+        self.consulta_widget = ConsultaWidget(self.db_connection)
+        self.content_area.addWidget(self.consulta_widget)
+
         self.configuracoes_widget = ConfiguracoesWidget(self.current_theme, self.apply_theme)
         self.content_area.addWidget(self.configuracoes_widget)
 
         main_layout.addWidget(self.content_area, stretch=1)
 
-        # Inicializa a navegação
         self._navigate("Home")
 
         # Aplica o tema salvo
         self.apply_theme(self.current_theme)
 
+    def _get_icon_path(self, icon_base):
+        """Constrói o caminho para o ícone SVG sem considerar o tema."""
+        return str(self.icons_dir / f"{icon_base}.svg")
+
     def _navigate(self, screen_name):
-        # Lógica para alternar a tela
         for name, btn in self.buttons.items():
             btn.setChecked(name == screen_name)
 
         if screen_name == "Home":
             self.content_area.setCurrentIndex(0)
         elif screen_name == "Cadastrar Currículo":
-            self.content_area.setCurrentIndex(1)  # Alterado para o índice correto da tela de cadastro
+            self.content_area.setCurrentIndex(1)
         elif screen_name == "Consultar Currículos":
-            self.content_area.addWidget(QLabel("Tela de Consulta de Currículos"))
             self.content_area.setCurrentIndex(2)
         elif screen_name == "Configurações":
-            # Exibe o widget de configurações
-            self.content_area.setCurrentWidget(self.configuracoes_widget)
+            self.content_area.setCurrentIndex(3)
         elif screen_name == "Sair":
             QApplication.quit()
 
     def apply_theme(self, theme):
-        # Aplica o tema
         self.current_theme = theme
         if theme == "dark":
             self.setStyleSheet("""
@@ -114,17 +136,26 @@ class MainWindow(QMainWindow):
                 QPushButton:checked { background-color: #0056A1; color: white; }
             """)
 
+        # Atualiza os ícones da barra lateral
+        for name, btn in self.buttons.items():
+            icon_path = self._get_icon_path(self.button_info[name])
+            icon = QIcon(icon_path)
+            btn.setIcon(icon)
+
     def _button_stylesheet(self):
         return """
             QPushButton {
                 text-align: left;
                 padding: 10px;
                 font-size: 14px;
+                font-weight: bold;
+                color: white;  /* Texto sempre branco */
                 border: none;
                 background-color: transparent;
+                outline: none;  /* Remove qualquer contorno do botão */
             }
             QPushButton:hover {
-                background-color: #dcdcdc;
+                background-color: #367dba;
             }
             QPushButton:checked {
                 background-color: #0056A1;
