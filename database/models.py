@@ -70,7 +70,7 @@ class CurriculoModel:
                 print(f"Erro ao criar índices: {e}")
                 raise
 
-    def fetch_filtered_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None):
+    def fetch_filtered_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None, cargo=None, experiencia_min=None):
         query = """
         SELECT c.id AS curriculo_id,
             c.nome,
@@ -85,28 +85,24 @@ class CurriculoModel:
         AND (%s IS NULL OR c.escolaridade = %s)
         AND (%s IS NULL OR c.idade >= %s)
         AND (%s IS NULL OR c.idade <= %s)
+        AND (%s IS NULL OR e.cargo ILIKE %s)
+        AND (%s IS NULL OR e.anos_experiencia >= %s)
         """
         params = (
             nome, f"%{nome}%" if nome else None,
             escolaridade, escolaridade,
             idade_min, idade_min,
-            idade_max, idade_max
+            idade_max, idade_max,
+            cargo, f"%{cargo}%" if cargo else None,
+            experiencia_min, experiencia_min
         )
 
-        # Debug
-        print("Consulta SQL:")
-        print(query)
-        print("Parâmetros:")
-        print(params)
-
         try:
-            results = self.db.execute_query(query, params, fetch_all=True)
-            print("Resultados retornados:")
-            print(results)
-            return results
+            return self.db.execute_query(query, params, fetch_all=True)
         except Exception as e:
             print(f"Erro ao buscar currículos: {e}")
             return []
+
 
 
     def insert_curriculo(self, nome, idade, telefone, escolaridade):
