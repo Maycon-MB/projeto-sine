@@ -137,20 +137,27 @@ class CadastroWidget(QWidget):
         return combo_box
 
     def verificar_nome_existente(self):
+        """
+        Verifica em tempo real se o nome já está cadastrado no banco.
+        """
         nome = self.nome_input.text().strip()
-        if nome:
-            try:
-                if self.curriculo_model.is_duplicate_nome(nome):
-                    self.nome_status_label.setText("Nome já cadastrado.")
-                    self.nome_status_label.setStyleSheet("color: red;")
-                else:
-                    self.nome_status_label.setText("Nome disponível.")
-                    self.nome_status_label.setStyleSheet("color: green;")
-            except Exception as e:
-                self.nome_status_label.setText("Erro ao verificar nome.")
-                self.nome_status_label.setStyleSheet("color: orange;")
-        else:
-            self.nome_status_label.clear()
+        if len(nome.split()) < 2:  # Certifica-se de que o nome é completo
+            self.nome_status_label.setText("Digite o nome completo.")
+            self.nome_status_label.setStyleSheet("color: orange;")
+            return
+
+        try:
+            if self.curriculo_model.is_duplicate_nome(nome):  # Verifica duplicidade pelo nome
+                self.nome_status_label.setText("Nome já cadastrado.")
+                self.nome_status_label.setStyleSheet("color: red;")
+            else:
+                self.nome_status_label.setText("Nome disponível.")
+                self.nome_status_label.setStyleSheet("color: green;")
+        except Exception as e:
+            self.nome_status_label.setText("Erro ao verificar nome.")
+            self.nome_status_label.setStyleSheet("color: orange;")
+
+
 
     def add_experiencia(self):
         if self.experiencia_count >= self.max_experiencias:
@@ -192,6 +199,9 @@ class CadastroWidget(QWidget):
         self.experiencia_count -= 1
 
     def cadastrar_dados(self):
+        """
+        Cadastro de dados com confirmação caso o nome já esteja duplicado.
+        """
         nome = self.nome_input.text().strip()
         idade = self.idade_input.value()
         telefone = self.telefone_input.text().strip()
@@ -215,10 +225,16 @@ class CadastroWidget(QWidget):
             return
 
         try:
-            # Verificar duplicidade
-            if self.curriculo_model.is_duplicate(nome, telefone):
-                QMessageBox.warning(self, "Erro", "Currículo com o mesmo nome ou telefone já cadastrado.")
-                return
+            # Verificar duplicidade no banco
+            if self.curriculo_model.is_duplicate_nome(nome):
+                resposta = QMessageBox.question(
+                    self,
+                    "Confirmação",
+                    "O nome já está cadastrado. Deseja continuar?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                if resposta == QMessageBox.No:
+                    return
 
             # Inserir currículo
             curriculo_id = self.curriculo_model.insert_curriculo(nome, idade, telefone, escolaridade)
@@ -231,6 +247,7 @@ class CadastroWidget(QWidget):
             self.limpar_formulario()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Falha ao cadastrar os dados: {e}")
+
 
 
     def limpar_formulario(self):
