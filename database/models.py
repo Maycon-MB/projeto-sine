@@ -8,21 +8,36 @@ class CurriculoModel:
         """
         self.db = db_connection
 
+    def is_duplicate_nome(self, nome):
+        """
+        Verifica se já existe um currículo com o mesmo nome.
+        """
+        query = "SELECT COUNT(*) AS total FROM curriculo WHERE nome = %s"
+        try:
+            result = self.db.execute_query(query, (nome,), fetch_one=True)
+            return result.get('total', 0) > 0
+        except Exception as e:
+            print(f"Erro ao verificar duplicidade do nome: {e}")
+            return False
+
+
     def is_duplicate(self, nome, telefone):
         """
         Verifica se já existe um currículo com o mesmo nome ou telefone.
         """
         query = """
-        SELECT COUNT(*)
+        SELECT COUNT(*) AS total
         FROM curriculo
         WHERE nome = %s OR telefone = %s
         """
         try:
             result = self.db.execute_query(query, (nome, telefone), fetch_one=True)
-            return result['count'] > 0
+            # Acessa pela chave `total`, garantindo compatibilidade
+            return result.get('total', 0) > 0
         except Exception as e:
             print(f"Erro ao verificar duplicidade: {e}")
             return False
+
 
     def create_tables(self):
         """
