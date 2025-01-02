@@ -20,19 +20,23 @@ class CurriculoModel:
             print(f"Erro ao verificar duplicidade do nome: {e}")
             return False
 
-
-    def is_duplicate(self, nome, telefone):
+    def is_duplicate(self, nome, telefone, curriculo_id=None):
         """
-        Verifica se já existe um currículo com o mesmo nome ou telefone.
+        Verifica se já existe um currículo com o mesmo nome ou telefone, excluindo um ID específico.
         """
         query = """
         SELECT COUNT(*) AS total
         FROM curriculo
-        WHERE nome = %s OR telefone = %s
+        WHERE (nome = %s OR telefone = %s)
         """
+        params = [nome, telefone]
+
+        if curriculo_id:
+            query += " AND id != %s"
+            params.append(curriculo_id)
+
         try:
-            result = self.db.execute_query(query, (nome, telefone), fetch_one=True)
-            # Acessa pela chave `total`, garantindo compatibilidade
+            result = self.db.execute_query(query, tuple(params), fetch_one=True)
             return result.get('total', 0) > 0
         except Exception as e:
             print(f"Erro ao verificar duplicidade: {e}")
@@ -71,7 +75,6 @@ class CurriculoModel:
                 print(f"Erro ao criar tabelas: {e}")
                 raise
 
-        # Índices para otimizar as consultas
         index_queries = [
             "CREATE INDEX IF NOT EXISTS idx_curriculo_nome ON curriculo (nome);",
             "CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade ON curriculo (escolaridade);",
@@ -86,6 +89,9 @@ class CurriculoModel:
                 raise
 
     def fetch_filtered_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None, cargo=None, experiencia_min=None):
+        """
+        Busca currículos aplicando filtros dinâmicos.
+        """
         query = """
         SELECT c.id AS curriculo_id,
             c.nome,
@@ -118,7 +124,31 @@ class CurriculoModel:
             print(f"Erro ao buscar currículos: {e}")
             return []
 
+    def get_curriculo_by_id(self, curriculo_id):
+        """
+        Busca um currículo pelo ID.
+        """
+        query = "SELECT * FROM curriculo WHERE id = %s"
+        try:
+            return self.db.execute_query(query, (curriculo_id,), fetch_one=True)
+        except Exception as e:
+            print(f"Erro ao buscar currículo por ID: {e}")
+            return None
 
+    def update_curriculo(self, curriculo_id, nome, idade, telefone, escolaridade):
+        """
+        Atualiza os dados de um currículo.
+        """
+        query = """
+        UPDATE curriculo
+        SET nome = %s, idade = %s, telefone = %s, escolaridade = %s
+        WHERE id = %s
+        """
+        try:
+            self.db.execute_query(query, (nome, idade, telefone, escolaridade, curriculo_id))
+        except Exception as e:
+            print(f"Erro ao atualizar currículo: {e}")
+            raise
 
     def insert_curriculo(self, nome, idade, telefone, escolaridade):
         """
@@ -151,7 +181,6 @@ class CurriculoModel:
             print(f"Erro ao inserir experiências: {e}")
             raise
 
-
     def fetch_experiencias(self, id_curriculo):
         """
         Busca as experiências profissionais associadas a um currículo.
@@ -166,4 +195,3 @@ class CurriculoModel:
         except Exception as e:
             print(f"Erro ao buscar experiências: {e}")
             return []
-
