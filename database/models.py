@@ -195,3 +195,77 @@ class CurriculoModel:
         except Exception as e:
             print(f"Erro ao buscar experiências: {e}")
             return []
+
+class UsuarioModel:
+    def __init__(self, db_connection):
+        self.db = db_connection
+
+    def cadastrar_usuario(self, usuario, senha_hash, email, tipo_usuario):
+        query = """
+        INSERT INTO usuarios (usuario, senha_hash, email, tipo_usuario)
+        VALUES (%s, %s, %s, %s)
+        RETURNING id;
+        """
+        try:
+            result = self.db.execute_query(query, (usuario, senha_hash, email, tipo_usuario), fetch_one=True)
+            # Envia solicitação para aprovação
+            self._enviar_aprovacao(result['id'])
+            return result['id']
+        except Exception as e:
+            raise RuntimeError(f"Erro ao cadastrar usuário: {e}")
+
+    def _enviar_aprovacao(self, usuario_id):
+        query = """
+        INSERT INTO aprovacoes (usuario_id)
+        VALUES (%s);
+        """
+        self.db.execute_query(query, (usuario_id,))
+
+    def listar_aprovacoes_pendentes(self):
+        query = """
+        SELECT a.id, u.usuario, u.email, u.tipo_usuario, a.criado_em
+        FROM aprovacoes a
+        JOIN usuarios u ON a.usuario_id = u.id
+        WHERE a.status_aprovacao = 'pendente';
+        """
+        return self.db.execute_query(query, fetch_all=True)
+
+    def aprovar_usuario(self, aprovacao_id):
+        query = """
+        UPDATE aprovacoes
+        SET status_aprovacao = 'aprovado', atualizado_em = CURRENT_TIMESTAMP
+        WHERE id = %s;
+        """
+        self.db.execute_query(query, (aprovacao_id,))
+
+    def rejeitar_usuario(self, aprovacao_id):
+        query = """
+        UPDATE aprovacoes
+        SET status_aprovacao = 'rejeitado', atualizado_em = CURRENT_TIMESTAMP
+        WHERE id = %s;
+        """
+        self.db.execute_query(query, (aprovacao_id,))
+
+    def gerar_token_recuperacao(self, usuario_id):
+        import uuid
+        token = str(uuid.uuid4())
+        query = """
+        INSERT INTO recuperacao_senha (usuario_id, token, expiracao)
+        VALUES (%s, %s, CURRENT_TIMESTAMP + INTERVAL '1 day')
+        RETURNING token;
+        """
+        result = self.db.execute_query(query, (usuario_id, token), fetch_one=True)
+        return result['token']
+
+    def redefinir_senha(self, token, nova_senha_hash):
+        query = """
+        UPDATE usuarios
+        SET senha_hash = %s
+        WHERE id = (
+            SELECT usuario_id FROM recuperacao_senha
+            WHERE token = %s AND expiracao > CURRENT_TIMESTAMP AND usado = FALSE
+        );
+        """
+        self.db.execute_query(query, (nova_senha_hash, token))
+        # Marca o token como usado
+        self.db.execute_query("UPDATE recuperacao_senha SET usado = TRUE WHERE token = %s;", (token,))
