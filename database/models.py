@@ -222,13 +222,29 @@ class UsuarioModel:
         self.db.execute_query(query, (usuario_id,))
 
     def listar_aprovacoes_pendentes(self):
-        query = """
-        SELECT a.id, u.usuario, u.email, u.tipo_usuario, a.criado_em
-        FROM aprovacoes a
-        JOIN usuarios u ON a.usuario_id = u.id
-        WHERE a.status_aprovacao = 'pendente';
         """
-        return self.db.execute_query(query, fetch_all=True)
+        Retorna uma lista de aprovações com status 'pendente'.
+        """
+        query = """
+            SELECT a.id, u.usuario, u.email, a.criado_em
+            FROM aprovacoes a
+            INNER JOIN usuarios u ON a.usuario_id = u.id
+            WHERE a.status_aprovacao = 'pendente'
+            ORDER BY a.criado_em ASC;
+        """
+        return self.db.fetch_all(query)
+
+    def atualizar_status_aprovacao(self, aprovacao_id, novo_status):
+        """
+        Atualiza o status de uma aprovação para 'aprovado' ou 'rejeitado'.
+        """
+        query = """
+            UPDATE aprovacoes
+            SET status_aprovacao = %s, atualizado_em = NOW()
+            WHERE id = %s;
+        """
+        self.db.execute(query, (novo_status, aprovacao_id))
+
 
     def aprovar_usuario(self, aprovacao_id):
         query = """
