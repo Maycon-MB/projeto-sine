@@ -2,17 +2,22 @@
 
 -- DROP VIEW public.vw_curriculos_detalhados;
 
-CREATE OR REPLACE VIEW public.vw_curriculos_detalhados
- AS
- SELECT c.id AS curriculo_id,
+CREATE OR REPLACE VIEW public.vw_curriculos_detalhados AS
+SELECT 
+    c.id AS curriculo_id,
     c.nome,
     c.idade,
     c.telefone,
     c.escolaridade,
+    c.status,
     e.cargo,
     e.anos_experiencia
-   FROM curriculo c
-     LEFT JOIN experiencias e ON c.id = e.id_curriculo;
+FROM 
+    curriculo c
+LEFT JOIN 
+    experiencias e 
+ON 
+    c.id = e.id_curriculo;
 
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
@@ -22,67 +27,39 @@ ALTER TABLE public.vw_curriculos_detalhados
 
 -- DROP TABLE IF EXISTS public.curriculo;
 
-CREATE TABLE IF NOT EXISTS public.curriculo
-(
-    id integer NOT NULL DEFAULT nextval('pessoas_id_seq'::regclass),
-    nome character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    idade integer NOT NULL,
-    telefone character varying(15) COLLATE pg_catalog."default",
-    escolaridade character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    CONSTRAINT pessoas_pkey PRIMARY KEY (id)
+CREATE TABLE IF NOT EXISTS public.curriculo (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    idade INTEGER NOT NULL,
+    telefone VARCHAR(15),
+    escolaridade VARCHAR(255) NOT NULL,
+    status VARCHAR(20) DEFAULT 'disponível' CHECK (status IN ('disponível', 'empregado', 'não disponível'))
 )
-
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.curriculo
-    OWNER to postgres;
--- Index: idx_curriculo_escolaridade
+    OWNER TO postgres;
 
--- DROP INDEX IF EXISTS public.idx_curriculo_escolaridade;
+-- Index: idx_curriculo_status
 
-CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade
-    ON public.curriculo USING btree
-    (escolaridade COLLATE pg_catalog."default" ASC NULLS LAST)
-    TABLESPACE pg_default;
--- Index: idx_curriculo_idade
-
--- DROP INDEX IF EXISTS public.idx_curriculo_idade;
-
-CREATE INDEX IF NOT EXISTS idx_curriculo_idade
-    ON public.curriculo USING btree
-    (idade ASC NULLS LAST)
-    TABLESPACE pg_default;
--- Index: idx_curriculo_nome
-
--- DROP INDEX IF EXISTS public.idx_curriculo_nome;
-
-CREATE INDEX IF NOT EXISTS idx_curriculo_nome
-    ON public.curriculo USING btree
-    (nome COLLATE pg_catalog."default" ASC NULLS LAST)
-    TABLESPACE pg_default;
+CREATE INDEX IF NOT EXISTS idx_curriculo_status
+    ON public.curriculo (status);
 
 -- Table: public.experiencias
 
 -- DROP TABLE IF EXISTS public.experiencias;
 
-CREATE TABLE IF NOT EXISTS public.experiencias
-(
-    id integer NOT NULL DEFAULT nextval('experiencias_id_seq'::regclass),
-    id_curriculo integer NOT NULL,
-    cargo character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    anos_experiencia integer NOT NULL,
-    CONSTRAINT experiencias_pkey PRIMARY KEY (id),
-    CONSTRAINT experiencias_id_curriculo_fkey FOREIGN KEY (id_curriculo)
-        REFERENCES public.curriculo (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE,
-    CONSTRAINT experiencias_anos_experiencia_check CHECK (anos_experiencia >= 0)
+CREATE TABLE IF NOT EXISTS public.experiencias (
+    id SERIAL PRIMARY KEY,
+    id_curriculo INTEGER NOT NULL,
+    cargo VARCHAR(255) NOT NULL,
+    anos_experiencia INTEGER NOT NULL CHECK (anos_experiencia >= 0),
+    FOREIGN KEY (id_curriculo) REFERENCES curriculo (id) ON DELETE CASCADE
 )
-
 TABLESPACE pg_default;
 
 ALTER TABLE IF EXISTS public.experiencias
-    OWNER to postgres;
+    OWNER TO postgres;
 
 -- Table: public.pessoa_servicos
 

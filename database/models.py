@@ -195,6 +195,11 @@ class CurriculoModel:
         except Exception as e:
             print(f"Erro ao buscar experiências: {e}")
             return []
+        
+    def atualizar_status(self, curriculo_id: int, novo_status: str) -> None:
+        query = "UPDATE curriculo SET status = %s WHERE id = %s"
+        self.db.execute_query(query, (novo_status, curriculo_id))
+
 
 class UsuarioModel:
     def __init__(self, db_connection):
