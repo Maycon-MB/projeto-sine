@@ -7,13 +7,20 @@ from PySide6.QtWidgets import (
 class ConfiguracoesWidget(QWidget):
     CONFIG_FILE = "config.json"  # Arquivo de configuração
 
-    def __init__(self, current_theme, apply_theme_callback):
+    def __init__(self, current_theme, apply_theme_callback, main_window):
         super().__init__()
-        self.current_theme = current_theme
+        self.main_window = main_window  # Recebe a referência para o QMainWindow
+
+        # Carrega as configurações salvas
+        saved_config = self.load_configurations()
+
+        # Define os valores iniciais a partir das configurações salvas
+        self.current_theme = saved_config.get("theme", "light")
         self.apply_theme_callback = apply_theme_callback
-        self.font_family = "Arial"  # Fonte padrão garantida
-        self.font_size = 12         # Tamanho padrão
-        
+        self.font_family = saved_config.get("font_family", "Arial")
+        self.font_size = saved_config.get("font_size", 12)
+        self.resolution = saved_config.get("resolution", "1200x600")
+
         layout = QVBoxLayout(self)
 
         # Tema
@@ -27,7 +34,7 @@ class ConfiguracoesWidget(QWidget):
         layout.addWidget(self.theme_toggle)
 
         # Configuração de Fonte
-        font_label = QLabel("Fonte Atual: Arial")
+        font_label = QLabel(f"Fonte Atual: {self.font_family}")
         layout.addWidget(font_label)
 
         self.font_combo = QComboBox()
@@ -45,7 +52,7 @@ class ConfiguracoesWidget(QWidget):
         layout.addWidget(self.font_size_spinbox)
 
         # Resolução Padrão da Tela
-        self.resolution_label = QLabel("Resolução Atual: 1200x600")
+        self.resolution_label = QLabel(f"Resolução Atual: {self.resolution}")
         layout.addWidget(self.resolution_label)
 
         self.resolution_combo = QComboBox()
@@ -57,7 +64,7 @@ class ConfiguracoesWidget(QWidget):
             "1600x900",
             "1920x1080"
         ])
-        self.resolution_combo.setCurrentText("1200x600")
+        self.resolution_combo.setCurrentText(self.resolution)
         self.resolution_combo.currentTextChanged.connect(self.apply_resolution)
         layout.addWidget(self.resolution_combo)
 
@@ -72,6 +79,11 @@ class ConfiguracoesWidget(QWidget):
         layout.addWidget(save_button)
 
         layout.addStretch()
+
+        # Aplica as configurações ao inicializar
+        self.apply_font_settings()
+        self.apply_resolution(self.resolution)
+        self.apply_theme_callback(self.current_theme)
 
     def toggle_theme(self):
         # Alterna entre os temas claro e escuro
@@ -95,12 +107,17 @@ class ConfiguracoesWidget(QWidget):
         self.setStyleSheet(f"* {{ font-family: {self.font_family}; font-size: {self.font_size}px; }}")
 
     def apply_resolution(self, resolution):
-        # Redimensiona a janela principal com base na resolução selecionada
-        parent = self.parentWidget()
-        if parent:
-            width, height = map(int, resolution.split("x"))
-            parent.resize(width, height)
-            self.resolution_label.setText(f"Resolução Atual: {resolution}")
+        """
+        Redimensiona a janela principal com base na resolução selecionada.
+        """
+        self.resolution = resolution
+        if self.main_window:  # Usa a referência direta ao MainWindow
+            try:
+                width, height = map(int, resolution.split("x"))
+                self.main_window.resize(width, height)
+                self.resolution_label.setText(f"Resolução Atual: {resolution}")
+            except ValueError:
+                QMessageBox.critical(self, "Erro", f"Resolução inválida: {resolution}")
 
     def reset_to_defaults(self):
         # Restaura as configurações para os valores padrão
@@ -124,7 +141,7 @@ class ConfiguracoesWidget(QWidget):
             "theme": self.current_theme,
             "font_family": self.font_family,
             "font_size": self.font_size,
-            "resolution": self.resolution_combo.currentText()
+            "resolution": self.resolution
         }
         try:
             with open(self.CONFIG_FILE, "w") as file:
