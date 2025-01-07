@@ -1,5 +1,3 @@
-# main.py
-
 import os
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -15,11 +13,20 @@ from gui.notificacoes import TelaNotificacoes
 from database.connection import DatabaseConnection
 from database.models import UsuarioModel
 
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Aplicação com Sidebar")
-        self.resize(1200, 600)
+
+        # Carregar configurações salvas
+        config = ConfiguracoesWidget.load_configurations()
+        self.current_theme = config.get("theme", "light")
+        self.resolution = config.get("resolution", "1200x600")
+
+        # Aplicar resolução salva
+        width, height = map(int, self.resolution.split("x"))
+        self.resize(width, height)
 
         # Diretório base do projeto
         self.base_dir = Path(__file__).resolve().parent
@@ -35,10 +42,6 @@ class MainWindow(QMainWindow):
 
         # Inicializar modelos
         self.usuario_model = UsuarioModel(self.db_connection)
-
-        # Carregar configurações salvas
-        config = ConfiguracoesWidget.load_configurations()
-        self.current_theme = config.get("theme", "light")
 
         # Configuração do widget central
         central_widget = QWidget()
@@ -121,11 +124,10 @@ class MainWindow(QMainWindow):
             font-size: 12px;
             font-weight: bold;
         """)
-        self.notification_count_label.move(30, -5)  # Posição no canto superior direito
+        self.notification_count_label.move(30, -5)
 
-        # Layout do botão de notificações
         notification_layout = QWidget(self.notification_button)
-        notification_layout.setGeometry(0, 0, 40, 40)  # Posicionamento interno
+        notification_layout.setGeometry(0, 0, 40, 40)
         notification_layout_layout = QVBoxLayout(notification_layout)
         notification_layout_layout.setContentsMargins(20, 5, 0, 0)
         notification_layout_layout.addWidget(self.notification_count_label)
@@ -145,7 +147,8 @@ class MainWindow(QMainWindow):
         self.consulta_widget = ConsultaWidget(self.db_connection)
         self.content_area.addWidget(self.consulta_widget)
 
-        self.configuracoes_widget = ConfiguracoesWidget(self.current_theme, self.apply_theme)
+        # Passa a referência de MainWindow ao ConfiguracoesWidget
+        self.configuracoes_widget = ConfiguracoesWidget(self.current_theme, self.apply_theme, self)
         self.content_area.addWidget(self.configuracoes_widget)
 
         body_layout.addWidget(self.content_area, stretch=1)
@@ -159,23 +162,17 @@ class MainWindow(QMainWindow):
         self._update_notification_count()
         self.notification_timer = QTimer()
         self.notification_timer.timeout.connect(self._update_notification_count)
-        self.notification_timer.start(5000)  # Atualiza a cada 5 segundos
+        self.notification_timer.start(5000)
 
     def _show_notifications(self):
-        """
-        Abre a tela de notificações como um diálogo modal.
-        """
         try:
-            notificacoes = TelaNotificacoes(self.usuario_model)  # Passa o UsuarioModel
-            notificacoes.exec()  # Usa exec() corretamente com QDialog
-            self._update_notification_count()  # Atualiza o contador após interações
+            notificacoes = TelaNotificacoes(self.usuario_model)
+            notificacoes.exec()
+            self._update_notification_count()
         except Exception as e:
             print(f"Erro ao mostrar notificações: {e}")
 
     def _update_notification_count(self):
-        """
-        Atualiza o contador de notificações pendentes.
-        """
         try:
             count = len(self.usuario_model.listar_aprovacoes_pendentes())
             self.notification_count_label.setText(str(count))
