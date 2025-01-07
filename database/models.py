@@ -228,7 +228,7 @@ class UsuarioModel:
 
     def listar_aprovacoes_pendentes(self):
         """
-        Retorna uma lista de aprovações com status 'pendente'.
+        Retorna uma lista de aprovações pendentes.
         """
         query = """
             SELECT a.id, u.usuario, u.email, a.criado_em
@@ -237,7 +237,13 @@ class UsuarioModel:
             WHERE a.status_aprovacao = 'pendente'
             ORDER BY a.criado_em ASC;
         """
-        return self.db.fetch_all(query)
+        try:
+            # Usando execute_query com fetch_all=True
+            return self.db.execute_query(query, fetch_all=True)
+        except Exception as e:
+            print(f"Erro ao listar aprovações pendentes: {e}")
+            return []
+
 
     def atualizar_status_aprovacao(self, aprovacao_id, novo_status):
         """

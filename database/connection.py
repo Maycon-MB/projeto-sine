@@ -57,3 +57,4 @@ class DatabaseConnection:
             print(f"Erro inesperado: {e}")
             raise RuntimeError(f"Erro ao executar consulta: {e}")
 
+

@@ -1,6 +1,130 @@
--- View: public.vw_curriculos_detalhados
+-- Tabela: curriculo
+-- Criação da tabela principal para currículos
+DROP TABLE IF EXISTS public.curriculo;
 
--- DROP VIEW public.vw_curriculos_detalhados;
+CREATE TABLE IF NOT EXISTS public.curriculo (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL,
+    idade INTEGER NOT NULL,
+    telefone VARCHAR(15),
+    escolaridade VARCHAR(255) NOT NULL,
+    status VARCHAR(20) DEFAULT 'disponível' CHECK (status IN ('disponível', 'empregado', 'não disponível'))
+)
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.curriculo
+    OWNER TO postgres;
+
+-- Índices para a tabela curriculo
+CREATE INDEX IF NOT EXISTS idx_curriculo_status ON public.curriculo (status);
+CREATE INDEX IF NOT EXISTS idx_curriculo_nome ON public.curriculo (nome);
+CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade ON public.curriculo (escolaridade);
+CREATE INDEX IF NOT EXISTS idx_curriculo_idade ON public.curriculo (idade);
+
+
+-- Tabela: experiencias
+-- Criação da tabela para experiências relacionadas aos currículos
+DROP TABLE IF EXISTS public.experiencias;
+
+CREATE TABLE IF NOT EXISTS public.experiencias (
+    id SERIAL PRIMARY KEY,
+    id_curriculo INTEGER NOT NULL,
+    cargo VARCHAR(255) NOT NULL,
+    anos_experiencia INTEGER NOT NULL CHECK (anos_experiencia >= 0),
+    FOREIGN KEY (id_curriculo) REFERENCES public.curriculo (id) ON DELETE CASCADE
+)
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.experiencias
+    OWNER TO postgres;
+
+
+-- Tabela: pessoa_servicos
+-- Criação da tabela para serviços vinculados a currículos
+DROP TABLE IF EXISTS public.pessoa_servicos;
+
+CREATE TABLE IF NOT EXISTS public.pessoa_servicos (
+    id SERIAL PRIMARY KEY,
+    pessoa_id INTEGER,
+    servico VARCHAR(255) NOT NULL,
+    FOREIGN KEY (pessoa_id) REFERENCES public.curriculo (id) ON DELETE CASCADE
+)
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.pessoa_servicos
+    OWNER TO postgres;
+
+
+-- Tabela: servicos
+-- Criação da tabela de serviços gerais
+DROP TABLE IF EXISTS public.servicos;
+
+CREATE TABLE IF NOT EXISTS public.servicos (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(100) NOT NULL,
+    descricao TEXT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT servicos_nome_key UNIQUE (nome)
+)
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.servicos
+    OWNER TO postgres;
+
+
+-- Tabela: usuarios
+-- Criação da tabela para controle de usuários do sistema
+DROP TABLE IF EXISTS public.usuarios;
+
+CREATE TABLE IF NOT EXISTS public.usuarios (
+    id SERIAL PRIMARY KEY,
+    usuario VARCHAR(50) NOT NULL,
+    senha_hash VARCHAR(255) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    tipo_usuario VARCHAR(20) NOT NULL,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT usuarios_email_key UNIQUE (email),
+    CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
+    CONSTRAINT usuarios_tipo_usuario_check CHECK (tipo_usuario IN ('admin', 'comum'))
+)
+TABLESPACE pg_default;
+
+ALTER TABLE IF EXISTS public.usuarios
+    OWNER TO postgres;
+
+
+-- Tabela: aprovacoes
+-- Criação da tabela para aprovações de usuários
+DROP TABLE IF EXISTS public.aprovacoes;
+
+CREATE TABLE IF NOT EXISTS public.aprovacoes (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    status_aprovacao VARCHAR(20) DEFAULT 'pendente',
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
+);
+
+
+-- Tabela: recuperacao_senha
+-- Criação da tabela para controle de recuperação de senhas
+DROP TABLE IF EXISTS public.recuperacao_senha;
+
+CREATE TABLE IF NOT EXISTS public.recuperacao_senha (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    token VARCHAR(255) NOT NULL,
+    expiracao TIMESTAMP NOT NULL,
+    usado BOOLEAN DEFAULT FALSE,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
+);
+
+
+-- View: vw_curriculos_detalhados
+-- Criação da view para exibição de currículos detalhados com suas experiências
+DROP VIEW IF EXISTS public.vw_curriculos_detalhados;
 
 CREATE OR REPLACE VIEW public.vw_curriculos_detalhados AS
 SELECT 
@@ -21,124 +145,3 @@ ON
 
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
-
-
--- Table: public.curriculo
-
--- DROP TABLE IF EXISTS public.curriculo;
-
-CREATE TABLE IF NOT EXISTS public.curriculo (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(255) NOT NULL,
-    idade INTEGER NOT NULL,
-    telefone VARCHAR(15),
-    escolaridade VARCHAR(255) NOT NULL,
-    status VARCHAR(20) DEFAULT 'disponível' CHECK (status IN ('disponível', 'empregado', 'não disponível'))
-)
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.curriculo
-    OWNER TO postgres;
-
--- Index: idx_curriculo_status
-
-CREATE INDEX IF NOT EXISTS idx_curriculo_status
-    ON public.curriculo (status);
-
--- Table: public.experiencias
-
--- DROP TABLE IF EXISTS public.experiencias;
-
-CREATE TABLE IF NOT EXISTS public.experiencias (
-    id SERIAL PRIMARY KEY,
-    id_curriculo INTEGER NOT NULL,
-    cargo VARCHAR(255) NOT NULL,
-    anos_experiencia INTEGER NOT NULL CHECK (anos_experiencia >= 0),
-    FOREIGN KEY (id_curriculo) REFERENCES curriculo (id) ON DELETE CASCADE
-)
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.experiencias
-    OWNER TO postgres;
-
--- Table: public.pessoa_servicos
-
--- DROP TABLE IF EXISTS public.pessoa_servicos;
-
-CREATE TABLE IF NOT EXISTS public.pessoa_servicos
-(
-    id integer NOT NULL DEFAULT nextval('pessoa_servicos_id_seq'::regclass),
-    pessoa_id integer,
-    servico character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    CONSTRAINT pessoa_servicos_pkey PRIMARY KEY (id),
-    CONSTRAINT pessoa_servicos_pessoa_id_fkey FOREIGN KEY (pessoa_id)
-        REFERENCES public.curriculo (id) MATCH SIMPLE
-        ON UPDATE NO ACTION
-        ON DELETE CASCADE
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.pessoa_servicos
-    OWNER to postgres;
-
--- Table: public.servicos
-
--- DROP TABLE IF EXISTS public.servicos;
-
-CREATE TABLE IF NOT EXISTS public.servicos
-(
-    id integer NOT NULL DEFAULT nextval('servicos_id_seq'::regclass),
-    nome character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    descricao text COLLATE pg_catalog."default",
-    criado_em timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT servicos_pkey PRIMARY KEY (id),
-    CONSTRAINT servicos_nome_key UNIQUE (nome)
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.servicos
-    OWNER to postgres;
-
--- Table: public.usuarios
-
--- DROP TABLE IF EXISTS public.usuarios;
-
-CREATE TABLE IF NOT EXISTS public.usuarios
-(
-    id integer NOT NULL DEFAULT nextval('usuarios_id_seq'::regclass),
-    usuario character varying(50) COLLATE pg_catalog."default" NOT NULL,
-    senha_hash character varying(255) COLLATE pg_catalog."default" NOT NULL,
-    email character varying(100) COLLATE pg_catalog."default" NOT NULL,
-    tipo_usuario character varying(20) COLLATE pg_catalog."default" NOT NULL,
-    criado_em timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT usuarios_pkey PRIMARY KEY (id),
-    CONSTRAINT usuarios_email_key UNIQUE (email),
-    CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
-    CONSTRAINT usuarios_tipo_usuario_check CHECK (tipo_usuario::text = ANY (ARRAY['admin'::character varying, 'comum'::character varying]::text[]))
-)
-
-TABLESPACE pg_default;
-
-ALTER TABLE IF EXISTS public.usuarios
-    OWNER to postgres;
-
-CREATE TABLE IF NOT EXISTS public.aprovacoes (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER NOT NULL,
-    status_aprovacao VARCHAR(20) DEFAULT 'pendente',
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS public.recuperacao_senha (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER NOT NULL,
-    token VARCHAR(255) NOT NULL,
-    expiracao TIMESTAMP NOT NULL,
-    usado BOOLEAN DEFAULT FALSE,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-);
