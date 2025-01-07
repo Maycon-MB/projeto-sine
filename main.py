@@ -1,3 +1,5 @@
+# main.py
+
 import os
 from pathlib import Path
 from PySide6.QtWidgets import (
@@ -11,6 +13,7 @@ from gui.cadastro import CadastroWidget
 from gui.consulta import ConsultaWidget
 from gui.notificacoes import TelaNotificacoes
 from database.connection import DatabaseConnection
+from database.models import UsuarioModel
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -29,6 +32,9 @@ class MainWindow(QMainWindow):
             password="admin",
             host="localhost"
         )
+
+        # Inicializar modelos
+        self.usuario_model = UsuarioModel(self.db_connection)
 
         # Carregar configurações salvas
         config = ConfiguracoesWidget.load_configurations()
@@ -156,14 +162,22 @@ class MainWindow(QMainWindow):
         self.notification_timer.start(5000)  # Atualiza a cada 5 segundos
 
     def _show_notifications(self):
-        notificacoes = TelaNotificacoes(self.db_connection)
-        notificacoes.exec()
-        self._update_notification_count()  # Atualiza o contador após interações
+        """
+        Abre a tela de notificações como um diálogo modal.
+        """
+        try:
+            notificacoes = TelaNotificacoes(self.usuario_model)  # Passa o UsuarioModel
+            notificacoes.exec()  # Usa exec() corretamente com QDialog
+            self._update_notification_count()  # Atualiza o contador após interações
+        except Exception as e:
+            print(f"Erro ao mostrar notificações: {e}")
 
     def _update_notification_count(self):
+        """
+        Atualiza o contador de notificações pendentes.
+        """
         try:
-            model = self.consulta_widget.model
-            count = len(model.listar_aprovacoes_pendentes())
+            count = len(self.usuario_model.listar_aprovacoes_pendentes())
             self.notification_count_label.setText(str(count))
             self.notification_count_label.setVisible(count > 0)
         except Exception as e:
@@ -216,6 +230,7 @@ class MainWindow(QMainWindow):
         return """
             QPushButton {
                 text-align: left;
+                border-radius: 5px;
                 padding: 10px;
                 font-size: 14px;
                 font-weight: bold;

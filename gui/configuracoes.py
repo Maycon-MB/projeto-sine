@@ -1,5 +1,7 @@
 import json
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QMessageBox
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QPushButton, QLabel, QMessageBox, QComboBox, QSpinBox
+)
 
 
 class ConfiguracoesWidget(QWidget):
@@ -9,22 +11,62 @@ class ConfiguracoesWidget(QWidget):
         super().__init__()
         self.current_theme = current_theme
         self.apply_theme_callback = apply_theme_callback
-
+        self.font_family = "Arial"  # Fonte padrão garantida
+        self.font_size = 12         # Tamanho padrão
+        
         layout = QVBoxLayout(self)
 
-        # Label que indica o tema atual
+        # Tema
         self.theme_label = QLabel("Tema Atual: Claro" if self.current_theme == "light" else "Tema Atual: Escuro")
         layout.addWidget(self.theme_label)
 
-        # Botão para alternar o tema
         self.theme_toggle = QPushButton("Alternar para Tema Escuro" if self.current_theme == "light" else "Alternar para Tema Claro")
         self.theme_toggle.setCheckable(True)
         self.theme_toggle.setChecked(self.current_theme == "dark")
         self.theme_toggle.clicked.connect(self.toggle_theme)
-
         layout.addWidget(self.theme_toggle)
 
-        # Botão para salvar configurações
+        # Configuração de Fonte
+        font_label = QLabel("Fonte Atual: Arial")
+        layout.addWidget(font_label)
+
+        self.font_combo = QComboBox()
+        self.font_combo.addItems(["Arial", "Verdana", "Tahoma", "Courier New", "Times New Roman"])
+        self.font_combo.setCurrentText(self.font_family)
+        self.font_combo.currentTextChanged.connect(self.update_font_family)
+        layout.addWidget(self.font_combo)
+
+        # Tamanho da Fonte
+        self.font_size_spinbox = QSpinBox()
+        self.font_size_spinbox.setRange(8, 48)
+        self.font_size_spinbox.setValue(self.font_size)
+        self.font_size_spinbox.valueChanged.connect(self.update_font_size)
+        layout.addWidget(QLabel("Tamanho da Fonte:"))
+        layout.addWidget(self.font_size_spinbox)
+
+        # Resolução Padrão da Tela
+        self.resolution_label = QLabel("Resolução Atual: 1200x600")
+        layout.addWidget(self.resolution_label)
+
+        self.resolution_combo = QComboBox()
+        self.resolution_combo.addItems([
+            "800x600",
+            "1024x768",
+            "1280x720",
+            "1366x768",
+            "1600x900",
+            "1920x1080"
+        ])
+        self.resolution_combo.setCurrentText("1200x600")
+        self.resolution_combo.currentTextChanged.connect(self.apply_resolution)
+        layout.addWidget(self.resolution_combo)
+
+        # Restaurar Configurações
+        reset_button = QPushButton("Restaurar Configurações Padrão")
+        reset_button.clicked.connect(self.reset_to_defaults)
+        layout.addWidget(reset_button)
+
+        # Salvar Configurações
         save_button = QPushButton("Salvar Configurações")
         save_button.clicked.connect(self.save_configurations)
         layout.addWidget(save_button)
@@ -38,10 +80,51 @@ class ConfiguracoesWidget(QWidget):
         self.theme_toggle.setText("Alternar para Tema Claro" if self.current_theme == "dark" else "Alternar para Tema Escuro")
         self.apply_theme_callback(self.current_theme)
 
+    def update_font_family(self, font):
+        # Atualiza a família da fonte
+        self.font_family = font
+        self.apply_font_settings()
+
+    def update_font_size(self, value):
+        # Atualiza o tamanho da fonte
+        self.font_size = value
+        self.apply_font_settings()
+
+    def apply_font_settings(self):
+        # Aplica as configurações de fonte na interface
+        self.setStyleSheet(f"* {{ font-family: {self.font_family}; font-size: {self.font_size}px; }}")
+
+    def apply_resolution(self, resolution):
+        # Redimensiona a janela principal com base na resolução selecionada
+        parent = self.parentWidget()
+        if parent:
+            width, height = map(int, resolution.split("x"))
+            parent.resize(width, height)
+            self.resolution_label.setText(f"Resolução Atual: {resolution}")
+
+    def reset_to_defaults(self):
+        # Restaura as configurações para os valores padrão
+        self.current_theme = "light"
+        self.theme_label.setText("Tema Atual: Claro")
+        self.theme_toggle.setChecked(False)
+        self.theme_toggle.setText("Alternar para Tema Escuro")
+        self.font_family = "Arial"
+        self.font_combo.setCurrentText("Arial")
+        self.font_size = 12
+        self.font_size_spinbox.setValue(12)
+        self.resolution_combo.setCurrentText("1200x600")
+        self.apply_resolution("1200x600")
+        self.apply_font_settings()
+        self.apply_theme_callback(self.current_theme)
+        QMessageBox.information(self, "Configurações", "Configurações restauradas para os valores padrão!")
+
     def save_configurations(self):
         # Salva a configuração atual no arquivo JSON
         config = {
-            "theme": self.current_theme
+            "theme": self.current_theme,
+            "font_family": self.font_family,
+            "font_size": self.font_size,
+            "resolution": self.resolution_combo.currentText()
         }
         try:
             with open(self.CONFIG_FILE, "w") as file:
@@ -57,4 +140,9 @@ class ConfiguracoesWidget(QWidget):
             with open(ConfiguracoesWidget.CONFIG_FILE, "r") as file:
                 return json.load(file)
         except (FileNotFoundError, json.JSONDecodeError):
-            return {"theme": "light"}  # Valor padrão
+            return {
+                "theme": "light",
+                "font_family": "Arial",
+                "font_size": 12,
+                "resolution": "1200x600"
+            }  # Valores padrão

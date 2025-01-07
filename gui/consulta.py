@@ -13,6 +13,7 @@ class ConsultaWidget(QWidget):
         super().__init__()
         self.db_connection = db_connection
         self.curriculo_model = CurriculoModel(self.db_connection)
+        self.model = CurriculoModel(self.db_connection)  # Inicializa o model para integração
 
         self.setWindowTitle("Consultar Currículos")
         self.setup_ui()
@@ -135,8 +136,6 @@ class ConsultaWidget(QWidget):
 
         return filter_layout
 
-
-
     def search_curriculos(self):
         """Busca currículos aplicando os filtros especificados."""
         nome = self.nome_input.text().strip()
@@ -208,7 +207,6 @@ class ConsultaWidget(QWidget):
 
         self.total_label.setText(f"Total de pessoas: {len(results)}")
 
-
     def edit_selected_row(self):
         """Abre o diálogo para editar a linha selecionada."""
         selected_items = self.table.selectedItems()
@@ -219,7 +217,6 @@ class ConsultaWidget(QWidget):
         selected_row = selected_items[0].row()
         curriculo_id = int(self.table.item(selected_row, 0).text())  # ID agora está na coluna 0
         self.open_edit_dialog(curriculo_id)
-
 
     def open_edit_dialog(self, curriculo_id):
         """Abre o diálogo para editar um currículo."""
