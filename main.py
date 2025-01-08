@@ -210,18 +210,31 @@ class MainWindow(QMainWindow):
             self.setStyleSheet("""
                 QMainWindow { background-color: #121212; }
                 QWidget { background-color: #1E1E1E; color: white; }
-                QPushButton { background-color: #333; color: white; }
+                QPushButton {
+                    background-color: #333; 
+                    color: white; 
+                    border-radius: 5px; 
+                    padding: 10px;
+                }
                 QPushButton:hover { background-color: #555; }
                 QPushButton:checked { background-color: #0073CF; }
+                QMenu { background-color: #333; color: white; border: 1px solid #555; }
             """)
         else:
             self.setStyleSheet("""
                 QMainWindow { background-color: white; }
                 QWidget { background-color: #f0f0f0; color: black; }
-                QPushButton { background-color: transparent; color: black; }
+                QPushButton {
+                    background-color: #e0e0e0; 
+                    color: black; 
+                    border-radius: 5px; 
+                    padding: 10px;
+                }
                 QPushButton:hover { background-color: #dcdcdc; }
-                QPushButton:checked { background-color: #0056A1; color: white; }
+                QPushButton:checked { background-color: #0073CF; color: white; }
+                QMenu { background-color: #2f2f2f; color: white; border: 1px solid #dcdcdc; }
             """)
+
 
     def _button_stylesheet(self):
         return """
