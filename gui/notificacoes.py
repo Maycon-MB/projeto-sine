@@ -1,9 +1,9 @@
 from PySide6.QtWidgets import (
-    QToolButton, QMenu, QLabel, QVBoxLayout, QMessageBox, QWidget, QListWidget, 
-    QPushButton, QTableWidget, QTableWidgetItem, QHBoxLayout
+    QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHBoxLayout, QWidget, QPushButton, QMessageBox
 )
 
-class TelaNotificacoes(QWidget):
+
+class TelaNotificacoes(QDialog):  # Alterado para QDialog
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -32,16 +32,16 @@ class TelaNotificacoes(QWidget):
             self.tabela_notificacoes.setRowCount(len(notificacoes))
 
             for row, notificacao in enumerate(notificacoes):
-                usuario_item = QTableWidgetItem(notificacao['usuario'])
-                email_item = QTableWidgetItem(notificacao['email'])
+                usuario_item = QTableWidgetItem(notificacao["usuario"])
+                email_item = QTableWidgetItem(notificacao["email"])
 
                 # Botão de Aprovar
                 btn_aprovar = QPushButton("Aprovar")
-                btn_aprovar.clicked.connect(lambda _, id=notificacao['id']: self.aprovar(id))
+                btn_aprovar.clicked.connect(lambda _, id=notificacao["id"]: self.aprovar(id))
 
                 # Botão de Rejeitar
                 btn_rejeitar = QPushButton("Rejeitar")
-                btn_rejeitar.clicked.connect(lambda _, id=notificacao['id']: self.rejeitar(id))
+                btn_rejeitar.clicked.connect(lambda _, id=notificacao["id"]: self.rejeitar(id))
 
                 self.tabela_notificacoes.setItem(row, 0, usuario_item)
                 self.tabela_notificacoes.setItem(row, 1, email_item)
