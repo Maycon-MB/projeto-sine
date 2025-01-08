@@ -90,7 +90,10 @@ class ConfiguracoesWidget(QWidget):
         self.current_theme = "dark" if self.theme_toggle.isChecked() else "light"
         self.theme_label.setText("Tema Atual: Escuro" if self.current_theme == "dark" else "Tema Atual: Claro")
         self.theme_toggle.setText("Alternar para Tema Claro" if self.current_theme == "dark" else "Alternar para Tema Escuro")
-        self.apply_theme_callback(self.current_theme)
+        # Aciona o callback para atualizar o tema na janela principal
+        if self.apply_theme_callback:
+            self.apply_theme_callback(self.current_theme)
+
 
     def update_font_family(self, font):
         # Atualiza a família da fonte
