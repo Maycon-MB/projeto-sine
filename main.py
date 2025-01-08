@@ -110,11 +110,11 @@ class MainWindow(QMainWindow):
         self.notification_button.setIcon(QIcon(self._get_icon_path("notification-icon")))
         self.notification_button.setIconSize(QSize(24, 24))
         self.notification_button.setFixedSize(40, 40)
-        self.notification_button.setStyleSheet("background-color: transparent; border: none;")
+        self.notification_button.setStyleSheet("background-color: transparent; border: none; position: relative;")
         self.notification_button.clicked.connect(self._show_notifications)
 
         # Label para o contador de notificações
-        self.notification_count_label = QLabel("0")
+        self.notification_count_label = QLabel("0", self.notification_button)  # Associada ao botão
         self.notification_count_label.setFixedSize(20, 20)
         self.notification_count_label.setAlignment(Qt.AlignCenter)
         self.notification_count_label.setStyleSheet("""
@@ -123,14 +123,10 @@ class MainWindow(QMainWindow):
             border-radius: 10px;
             font-size: 12px;
             font-weight: bold;
+            position: absolute;
         """)
-        self.notification_count_label.move(30, -5)
-
-        notification_layout = QWidget(self.notification_button)
-        notification_layout.setGeometry(0, 0, 40, 40)
-        notification_layout_layout = QVBoxLayout(notification_layout)
-        notification_layout_layout.setContentsMargins(20, 5, 0, 0)
-        notification_layout_layout.addWidget(self.notification_count_label)
+        self.notification_count_label.move(self.notification_button.width() - 15, 0)  # Posição fixa relativa ao botão
+        self.notification_count_label.setVisible(False)  # Ocultar inicialmente
 
         self.top_bar_layout.addStretch()
         self.top_bar_layout.addWidget(self.notification_button)
@@ -165,12 +161,16 @@ class MainWindow(QMainWindow):
         self.notification_timer.start(5000)
 
     def _show_notifications(self):
+        """
+        Abre a tela de notificações como um diálogo modal.
+        """
         try:
-            notificacoes = TelaNotificacoes(self.usuario_model)
-            notificacoes.exec()
-            self._update_notification_count()
+            notificacoes = TelaNotificacoes(self.usuario_model)  # Passa o UsuarioModel
+            notificacoes.exec()  # Usa exec() corretamente com QDialog
+            self._update_notification_count()  # Atualiza o contador após interações
         except Exception as e:
             print(f"Erro ao mostrar notificações: {e}")
+
 
     def _update_notification_count(self):
         try:
