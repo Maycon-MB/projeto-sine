@@ -102,6 +102,12 @@ class ConsultaWidget(QWidget):
         second_row.addWidget(QLabel("Idade Máxima:"))
         second_row.addWidget(self.idade_max_input)
 
+        self.status_input = QComboBox()
+        self.status_input.addItems(["Todos", "disponível", "empregado", "não disponível"])
+        second_row.addWidget(QLabel("Status:"))
+        second_row.addWidget(self.status_input)
+
+
         # Botões de controle
         button_row = QHBoxLayout()
 
@@ -137,13 +143,14 @@ class ConsultaWidget(QWidget):
         return filter_layout
 
     def search_curriculos(self):
-        """Busca currículos aplicando os filtros especificados."""
+        """Busca currículos aplicando os filtros especificados, incluindo status."""
         nome = self.nome_input.text().strip()
         escolaridade = self.escolaridade_input.currentText()
         cargo = self.cargo_input.text().strip()
         experiencia_min = self.experiencia_min_input.value() or None
         idade_min = self.idade_min_input.value() or None
         idade_max = self.idade_max_input.value() or None
+        status = self.status_input.currentText()
 
         try:
             results = self.curriculo_model.fetch_filtered_curriculos(
@@ -152,7 +159,8 @@ class ConsultaWidget(QWidget):
                 idade_min=idade_min,
                 idade_max=idade_max,
                 cargo=cargo if cargo else None,
-                experiencia_min=experiencia_min
+                experiencia_min=experiencia_min,
+                status=status
             )
             self.populate_table(results)
         except Exception as e:

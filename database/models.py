@@ -1,4 +1,5 @@
 from database.connection import DatabaseConnection
+from email_utils import enviar_email
 
 
 class CurriculoModel:
@@ -88,9 +89,9 @@ class CurriculoModel:
                 print(f"Erro ao criar índices: {e}")
                 raise
 
-    def fetch_filtered_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None, cargo=None, experiencia_min=None):
+    def fetch_filtered_curriculos(self, nome=None, escolaridade=None, idade_min=None, idade_max=None, cargo=None, experiencia_min=None, status=None):
         """
-        Busca currículos aplicando filtros dinâmicos.
+        Busca currículos aplicando filtros dinâmicos, incluindo status.
         """
         query = """
         SELECT c.id AS curriculo_id,
@@ -98,6 +99,7 @@ class CurriculoModel:
             c.idade,
             c.telefone,
             c.escolaridade,
+            c.status,
             e.cargo,
             e.anos_experiencia
         FROM curriculo c
@@ -108,6 +110,7 @@ class CurriculoModel:
         AND (%s IS NULL OR c.idade <= %s)
         AND (%s IS NULL OR e.cargo ILIKE %s)
         AND (%s IS NULL OR e.anos_experiencia >= %s)
+        AND (%s IS NULL OR c.status = %s)
         """
         params = (
             nome, f"%{nome}%" if nome else None,
@@ -115,7 +118,8 @@ class CurriculoModel:
             idade_min, idade_min,
             idade_max, idade_max,
             cargo, f"%{cargo}%" if cargo else None,
-            experiencia_min, experiencia_min
+            experiencia_min, experiencia_min,
+            status if status != "Todos" else None, status if status != "Todos" else None
         )
 
         try:
@@ -123,6 +127,7 @@ class CurriculoModel:
         except Exception as e:
             print(f"Erro ao buscar currículos: {e}")
             return []
+
 
     def get_curriculo_by_id(self, curriculo_id):
         """
@@ -273,18 +278,43 @@ class UsuarioModel:
         """
         self.db.execute_query(query, (aprovacao_id,))
 
-    def gerar_token_recuperacao(self, usuario_id):
+
+    def gerar_token_recuperacao(self, email):
+        """
+        Gera um token de recuperação de senha para o e-mail especificado.
+        """
         import uuid
-        token = str(uuid.uuid4())
+        token = str(uuid.uuid4())  # Gera um token único
         query = """
         INSERT INTO recuperacao_senha (usuario_id, token, expiracao)
-        VALUES (%s, %s, CURRENT_TIMESTAMP + INTERVAL '1 day')
+        VALUES (
+            (SELECT id FROM usuarios WHERE email = %s), %s, CURRENT_TIMESTAMP + INTERVAL '1 day'
+        )
         RETURNING token;
         """
-        result = self.db.execute_query(query, (usuario_id, token), fetch_one=True)
-        return result['token']
+        try:
+            # Insere o token no banco de dados
+            result = self.db.execute_query(query, (email, token), fetch_one=True)
+            mensagem = f"""
+            Você solicitou a recuperação de sua senha. Use o seguinte token para redefinir sua senha:
+            
+            {token}
+            
+            Este token é válido por 24 horas.
+            
+            Caso você não tenha solicitado, ignore este e-mail.
+            """
+            # Envia o e-mail com o token
+            enviar_email(email, "Recuperação de Senha", mensagem)
+            return result['token']
+        except Exception as e:
+            raise RuntimeError(f"Erro ao gerar token de recuperação: {e}")
+
 
     def redefinir_senha(self, token, nova_senha_hash):
+        """
+        Redefine a senha de um usuário com base no token de recuperação.
+        """
         query = """
         UPDATE usuarios
         SET senha_hash = %s
@@ -293,6 +323,26 @@ class UsuarioModel:
             WHERE token = %s AND expiracao > CURRENT_TIMESTAMP AND usado = FALSE
         );
         """
-        self.db.execute_query(query, (nova_senha_hash, token))
-        # Marca o token como usado
-        self.db.execute_query("UPDATE recuperacao_senha SET usado = TRUE WHERE token = %s;", (token,))
+        try:
+            self.db.execute_query(query, (nova_senha_hash, token))
+            # Marca o token como usado
+            self.db.execute_query("UPDATE recuperacao_senha SET usado = TRUE WHERE token = %s;", (token,))
+        except Exception as e:
+            raise RuntimeError(f"Erro ao redefinir senha: {e}")
+
+    def validar_login(self, usuario_ou_email, senha_hash):
+        """
+        Verifica as credenciais do usuário no banco de dados.
+        """
+        query = """
+        SELECT id, usuario, email, tipo_usuario
+        FROM usuarios
+        WHERE (usuario = %s OR email = %s) AND senha_hash = %s AND status_aprovacao = 'aprovado';
+        """
+        try:
+            result = self.db.execute_query(query, (usuario_ou_email, usuario_ou_email, senha_hash), fetch_one=True)
+            return result  # Retorna os dados do usuário se encontrado
+        except Exception as e:
+            print(f"Erro ao validar login: {e}")
+            return None
+
