@@ -1,21 +1,21 @@
 import os
 from pathlib import Path
 from PySide6.QtWidgets import (
-    QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QPushButton, QLabel, QMessageBox
+    QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QPushButton, QLabel, QMessageBox, QDialog
 )
 from PySide6.QtCore import Qt, QSize, QTimer
-from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtGui import QIcon
 from gui.configuracoes import ConfiguracoesWidget
-from gui.cadastro import CadastroWidget
-from gui.consulta import ConsultaWidget
+from gui.cadastrar_curriculo import CadastroWidget
+from gui.consultar_curriculo import ConsultaWidget
 from gui.notificacoes import TelaNotificacoes
+from gui.login_cadastro import LoginCadastroDialog  # Tela de login/cadastro
 from database.connection import DatabaseConnection
 from database.models import UsuarioModel
 
 
 class MainWindow(QMainWindow):
-    def __init__(self):
+    def __init__(self, db_connection):
         super().__init__()
         self.setWindowTitle("Aplicação com Sidebar")
 
@@ -32,15 +32,8 @@ class MainWindow(QMainWindow):
         self.base_dir = Path(__file__).resolve().parent
         self.icons_dir = self.base_dir / "assets" / "icons"
 
-        # Conexão com o banco de dados
-        self.db_connection = DatabaseConnection(
-            dbname="projeto_sine",
-            user="postgres",
-            password="admin",
-            host="localhost"
-        )
-
-        # Inicializar modelos
+        # Inicializar modelo de usuários
+        self.db_connection = db_connection
         self.usuario_model = UsuarioModel(self.db_connection)
 
         # Configuração do widget central
@@ -161,16 +154,12 @@ class MainWindow(QMainWindow):
         self.notification_timer.start(5000)
 
     def _show_notifications(self):
-        """
-        Abre a tela de notificações como um diálogo modal.
-        """
         try:
-            notificacoes = TelaNotificacoes(self.usuario_model)  # Passa o UsuarioModel
-            notificacoes.exec()  # Usa exec() corretamente com QDialog
-            self._update_notification_count()  # Atualiza o contador após interações
+            notificacoes = TelaNotificacoes(self.usuario_model)
+            notificacoes.exec()
+            self._update_notification_count()
         except Exception as e:
             print(f"Erro ao mostrar notificações: {e}")
-
 
     def _update_notification_count(self):
         try:
@@ -218,7 +207,6 @@ class MainWindow(QMainWindow):
                 }
                 QPushButton:hover { background-color: #555; }
                 QPushButton:checked { background-color: #0073CF; }
-                QMenu { background-color: #333; color: white; border: 1px solid #555; }
             """)
         else:
             self.setStyleSheet("""
@@ -232,9 +220,7 @@ class MainWindow(QMainWindow):
                 }
                 QPushButton:hover { background-color: #dcdcdc; }
                 QPushButton:checked { background-color: #0073CF; color: white; }
-                QMenu { background-color: #2f2f2f; color: white; border: 1px solid #dcdcdc; }
             """)
-
 
     def _button_stylesheet(self):
         return """
@@ -261,6 +247,20 @@ class MainWindow(QMainWindow):
 
 if __name__ == "__main__":
     app = QApplication([])
-    window = MainWindow()
-    window.show()
-    app.exec()
+
+    # Inicializa a conexão com o banco
+    db_connection = DatabaseConnection(
+        dbname="projeto_sine",
+        user="postgres",
+        password="admin",
+        host="localhost"
+    )
+    usuario_model = UsuarioModel(db_connection)
+
+    # Exibe a tela de login/cadastro antes da janela principal
+    login_dialog = LoginCadastroDialog(usuario_model)
+    if login_dialog.exec() == QDialog.Accepted:
+        # Usuário autenticado, inicia a janela principal
+        window = MainWindow(db_connection)
+        window.show()
+        app.exec()
