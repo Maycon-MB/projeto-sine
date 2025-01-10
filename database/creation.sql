@@ -1,5 +1,4 @@
 -- Tabela: curriculo
--- Criação da tabela principal para currículos
 DROP TABLE IF EXISTS public.curriculo;
 
 CREATE TABLE IF NOT EXISTS public.curriculo (
@@ -21,9 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_curriculo_nome ON public.curriculo (nome);
 CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade ON public.curriculo (escolaridade);
 CREATE INDEX IF NOT EXISTS idx_curriculo_idade ON public.curriculo (idade);
 
-
 -- Tabela: experiencias
--- Criação da tabela para experiências relacionadas aos currículos
 DROP TABLE IF EXISTS public.experiencias;
 
 CREATE TABLE IF NOT EXISTS public.experiencias (
@@ -38,9 +35,7 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.experiencias
     OWNER TO postgres;
 
-
 -- Tabela: pessoa_servicos
--- Criação da tabela para serviços vinculados a currículos
 DROP TABLE IF EXISTS public.pessoa_servicos;
 
 CREATE TABLE IF NOT EXISTS public.pessoa_servicos (
@@ -54,9 +49,7 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.pessoa_servicos
     OWNER TO postgres;
 
-
 -- Tabela: servicos
--- Criação da tabela de serviços gerais
 DROP TABLE IF EXISTS public.servicos;
 
 CREATE TABLE IF NOT EXISTS public.servicos (
@@ -71,9 +64,7 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.servicos
     OWNER TO postgres;
 
-
 -- Tabela: usuarios
--- Criação da tabela para controle de usuários do sistema
 DROP TABLE IF EXISTS public.usuarios;
 
 CREATE TABLE IF NOT EXISTS public.usuarios (
@@ -81,6 +72,7 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     usuario VARCHAR(50) NOT NULL,
     senha_hash VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
+    cidade VARCHAR(100) NOT NULL,  -- Cidade adicionada
     tipo_usuario VARCHAR(20) NOT NULL,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT usuarios_email_key UNIQUE (email),
@@ -92,23 +84,20 @@ TABLESPACE pg_default;
 ALTER TABLE IF EXISTS public.usuarios
     OWNER TO postgres;
 
-
 -- Tabela: aprovacoes
--- Criação da tabela para aprovações de usuários
 DROP TABLE IF EXISTS public.aprovacoes;
 
 CREATE TABLE IF NOT EXISTS public.aprovacoes (
     id SERIAL PRIMARY KEY,
     usuario_id INTEGER NOT NULL,
+    cidade VARCHAR(100) NOT NULL,  -- Cidade vinculada à aprovação
     status_aprovacao VARCHAR(20) DEFAULT 'pendente',
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
 );
 
-
 -- Tabela: recuperacao_senha
--- Criação da tabela para controle de recuperação de senhas
 DROP TABLE IF EXISTS public.recuperacao_senha;
 
 CREATE TABLE IF NOT EXISTS public.recuperacao_senha (
@@ -121,9 +110,7 @@ CREATE TABLE IF NOT EXISTS public.recuperacao_senha (
     FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
 );
 
-
 -- View: vw_curriculos_detalhados
--- Criação da view para exibição de currículos detalhados com suas experiências
 DROP VIEW IF EXISTS public.vw_curriculos_detalhados;
 
 CREATE OR REPLACE VIEW public.vw_curriculos_detalhados AS
