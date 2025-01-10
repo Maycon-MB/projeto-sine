@@ -210,44 +210,44 @@ class UsuarioModel:
     def __init__(self, db_connection):
         self.db = db_connection
 
-    def cadastrar_usuario(self, usuario, senha_hash, email, tipo_usuario):
+    def cadastrar_usuario(self, usuario, senha_hash, email, cidade, tipo_usuario):
         query = """
-        INSERT INTO usuarios (usuario, senha_hash, email, tipo_usuario)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO usuarios (usuario, senha_hash, email, cidade, tipo_usuario)
+        VALUES (%s, %s, %s, %s, %s)
         RETURNING id;
         """
         try:
-            result = self.db.execute_query(query, (usuario, senha_hash, email, tipo_usuario), fetch_one=True)
+            result = self.db.execute_query(query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
             # Envia solicitação para aprovação
-            self._enviar_aprovacao(result['id'])
+            self._enviar_aprovacao(result['id'], cidade)
             return result['id']
         except Exception as e:
             raise RuntimeError(f"Erro ao cadastrar usuário: {e}")
 
-    def _enviar_aprovacao(self, usuario_id):
+    def _enviar_aprovacao(self, usuario_id, cidade):
         query = """
-        INSERT INTO aprovacoes (usuario_id)
-        VALUES (%s);
+        INSERT INTO aprovacoes (usuario_id, cidade)
+        VALUES (%s, %s);
         """
-        self.db.execute_query(query, (usuario_id,))
+        self.db.execute_query(query, (usuario_id, cidade))
 
-    def listar_aprovacoes_pendentes(self):
+    def listar_aprovacoes_pendentes(self, cidade_admin):
         """
-        Retorna uma lista de aprovações pendentes.
+        Retorna as aprovações pendentes filtradas pela cidade do admin.
         """
         query = """
             SELECT a.id, u.usuario, u.email, a.criado_em
             FROM aprovacoes a
             INNER JOIN usuarios u ON a.usuario_id = u.id
-            WHERE a.status_aprovacao = 'pendente'
+            WHERE a.status_aprovacao = 'pendente' AND a.cidade = %s
             ORDER BY a.criado_em ASC;
         """
         try:
-            # Usando execute_query com fetch_all=True
-            return self.db.execute_query(query, fetch_all=True)
+            return self.db.execute_query(query, (cidade_admin,), fetch_all=True)
         except Exception as e:
             print(f"Erro ao listar aprovações pendentes: {e}")
             return []
+
 
 
     def atualizar_status_aprovacao(self, aprovacao_id, novo_status):
