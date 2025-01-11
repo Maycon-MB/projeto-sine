@@ -216,7 +216,7 @@ class UsuarioModel:
         senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
         query = """
-        INSERT INTO usuarios (usuario, senha_hash, email, cidade, tipo_usuario)
+        INSERT INTO usuarios (usuario, senha, email, cidade, tipo_usuario)
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id;
         """
@@ -316,7 +316,7 @@ class UsuarioModel:
         """
         query = """
         UPDATE usuarios
-        SET senha_hash = %s
+        SET senha = %s
         WHERE id = (
             SELECT usuario_id FROM recuperacao_senha
             WHERE token = %s AND expiracao > CURRENT_TIMESTAMP AND usado = FALSE
@@ -330,13 +330,11 @@ class UsuarioModel:
             raise RuntimeError(f"Erro ao redefinir senha: {e}")
 
     def validar_login(self, usuario, senha):
-        query = "SELECT senha_hash FROM usuarios WHERE usuario = %s OR email = %s"
+        query = "SELECT senha FROM usuarios WHERE usuario = %s OR email = %s"
         try:
             result = self.db.execute_query(query, (usuario, usuario), fetch_one=True)
             if result:
-                senha_hash = result['senha_hash']
-                # 🔍 Comparar senha digitada com o hash
-                if bcrypt.checkpw(senha.encode(), senha_hash.encode()):
+                if bcrypt.checkpw(senha.encode(), result['senha'].encode()):
                     return True
             return False
         except Exception as e:
