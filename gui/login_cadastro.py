@@ -1,205 +1,132 @@
-from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QTabWidget, QWidget, QLineEdit, QPushButton, QLabel,
-    QMessageBox, QInputDialog, QHBoxLayout, QCheckBox
+from PySide6.QtWidgets import ( 
+    QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox, QTabWidget,
+    QWidget, QFormLayout, QHBoxLayout, QInputDialog
 )
-from PySide6.QtGui import QIcon
 from PySide6.QtCore import Qt
-from database.models import UsuarioModel
+import re
 import bcrypt
-import hashlib
-
 
 class LoginCadastroDialog(QDialog):
-    def __init__(self, usuario_model):
-        super().__init__()
+    def __init__(self, usuario_model, parent=None):
+        super().__init__(parent)
         self.usuario_model = usuario_model
         self.setWindowTitle("Login e Cadastro")
-        self.setMinimumSize(800, 600)
+        self.setMinimumSize(400, 300)
 
-        # Estilo Azul aplicado em toda a tela e abas
-        self.setStyleSheet("""
-            QDialog {
-                background-color: #191970;
-            }
-            QTabWidget::pane {
-                background-color: #191970;
-                border: 1px solid #191970;
-            }
-            QTabBar::tab {
-                background-color: #191970;
-                color: white;
-                padding: 10px;
-                font-weight: bold;
-                min-width: 120px;
-            }
-            QTabBar::tab:selected {
-                background-color: #0056A1;
-            }
-            QLabel {
-                font-size: 14px;
-                color: white;
-            }
-            QLineEdit {
-                background-color: white;
-                padding: 8px;
-                border-radius: 5px;
-                font-size: 14px;
-                color: black;
-                min-height: 35px;
-                min-width: 350px;
-            }
-            QPushButton {
-                background-color: #4682B4;
-                color: white;
-                padding: 10px;
-                border-radius: 5px;
-                font-size: 14px;
-                min-height: 35px;
-            }
-            QPushButton:hover {
-                background-color: #4169E1;
-            }
-        """)
+        self.layout_principal = QVBoxLayout()
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self.criar_tab_login(), "Login")
+        self.tabs.addTab(self.criar_tab_cadastro(), "Cadastro")
+        self.layout_principal.addWidget(self.tabs)
 
-        layout = QVBoxLayout(self)
-        self.tab_widget = QTabWidget(self)
-        layout.addWidget(self.tab_widget)
+        self.setLayout(self.layout_principal)
 
-        # Telas de Login e Cadastro
-        self.login_tab = QWidget()
-        self.cadastro_tab = QWidget()
-        self.tab_widget.addTab(self.login_tab, "Login")
-        self.tab_widget.addTab(self.cadastro_tab, "Cadastro")
+    def criar_tab_login(self):
+        tab_login = QWidget()
+        layout = QVBoxLayout()
 
-        self.setup_login_tab()
-        self.setup_cadastro_tab()
+        self.login_usuario_input = QLineEdit()
+        self.login_usuario_input.setPlaceholderText("Usuário ou E-mail")
 
-    def setup_login_tab(self):
-        layout = QVBoxLayout(self.login_tab)
-        layout.setAlignment(Qt.AlignTop)
+        self.login_senha_input = self.criar_password_field("Senha")
 
-        # Campo de Login
-        login_label = QLabel("Login")
-        layout.addWidget(login_label)
+        btn_login = QPushButton("Login")
+        btn_login.clicked.connect(self.handle_login)
 
-        self.login_input = QLineEdit()
-        self.login_input.setPlaceholderText("Digite seu usuário ou e-mail")
-        layout.addWidget(self.login_input)
+        btn_recuperar_senha = QPushButton("Esqueceu a senha?")
+        btn_recuperar_senha.setFlat(True)
+        btn_recuperar_senha.clicked.connect(self.handle_reset_password)
 
-        # Campo de Senha com ícone de olho ao lado
-        senha_layout = QHBoxLayout()
-        senha_label = QLabel("Senha")
-        senha_label.setStyleSheet("font-weight: bold;")
+        layout.addWidget(QLabel("Usuário ou E-mail:"))
+        layout.addWidget(self.login_usuario_input)
+        layout.addWidget(QLabel("Senha:"))
+        layout.addWidget(self.login_senha_input)
+        layout.addWidget(btn_login)
+        layout.addWidget(btn_recuperar_senha, alignment=Qt.AlignRight)
 
-        self.password_input = QLineEdit()
-        self.password_input.setPlaceholderText("Digite sua senha")
-        self.password_input.setEchoMode(QLineEdit.Password)
+        tab_login.setLayout(layout)
+        return tab_login
 
-        self.toggle_password_button = QPushButton()
-        self.toggle_password_button.setIcon(QIcon("assets/icons/eye_closed.png"))
-        self.toggle_password_button.setFixedSize(30, 30)
-        self.toggle_password_button.setCheckable(True)
-        self.toggle_password_button.setStyleSheet("background-color: transparent; border: none;")
-        self.toggle_password_button.toggled.connect(
-            lambda checked: self.toggle_password_visibility(checked, self.password_input, self.toggle_password_button)
-        )
+    def criar_tab_cadastro(self):
+        tab_cadastro = QWidget()
+        layout = QFormLayout()
 
-        senha_layout.addWidget(senha_label)
-        senha_layout.addWidget(self.toggle_password_button)
-        layout.addLayout(senha_layout)
-        layout.addWidget(self.password_input)
-
-        # Checkbox "Lembrar de Mim"
-        self.remember_me_checkbox = QCheckBox("Lembrar de mim")
-        self.remember_me_checkbox.setStyleSheet("color: white;")
-        layout.addWidget(self.remember_me_checkbox)
-
-        # Botão de Login
-        self.login_button = QPushButton("Login")
-        self.login_button.clicked.connect(self.handle_login)
-        layout.addWidget(self.login_button)
-
-        # Botão de recuperação de senha
-        self.reset_button = QPushButton("Esqueci Minha Senha")
-        self.reset_button.clicked.connect(self.handle_reset_password)
-        layout.addWidget(self.reset_button)
-
-    def setup_cadastro_tab(self):
-        layout = QVBoxLayout(self.cadastro_tab)
-        layout.setAlignment(Qt.AlignTop)
-
-        # Nome
-        layout.addWidget(QLabel("Nome"))
         self.nome_input = QLineEdit()
-        self.nome_input.setPlaceholderText("Digite seu nome")
-        layout.addWidget(self.nome_input)
+        self.nome_input.setPlaceholderText("Nome completo")
 
-        # Usuário
-        layout.addWidget(QLabel("Usuário"))
         self.usuario_input = QLineEdit()
-        self.usuario_input.setPlaceholderText("Digite seu usuário")
-        layout.addWidget(self.usuario_input)
+        self.usuario_input.setPlaceholderText("Usuário")
 
-        # Cidade
-        layout.addWidget(QLabel("Cidade"))
         self.cidade_input = QLineEdit()
-        self.cidade_input.setPlaceholderText("Digite sua cidade")
-        layout.addWidget(self.cidade_input)
+        self.cidade_input.setPlaceholderText("Cidade")
 
-        # E-mail
-        layout.addWidget(QLabel("E-mail"))
         self.cadastro_email_input = QLineEdit()
-        self.cadastro_email_input.setPlaceholderText("Digite seu e-mail")
-        layout.addWidget(self.cadastro_email_input)
+        self.cadastro_email_input.setPlaceholderText("E-mail")
 
-        # Senha
-        layout.addWidget(QLabel("Senha"))
-        self.cadastro_password_input, _ = self.create_password_field()
-        layout.addWidget(self.cadastro_password_input)
+        self.cadastro_password_input = self.criar_password_field("Senha")
+        self.confirm_password_input = self.criar_password_field("Confirme a senha")
 
-        # Confirmar Senha
-        layout.addWidget(QLabel("Confirmar Senha"))
-        self.confirm_password_input, _ = self.create_password_field()
-        layout.addWidget(self.confirm_password_input)
+        btn_cadastrar = QPushButton("Cadastrar")
+        btn_cadastrar.clicked.connect(self.handle_cadastro)
 
-        # Botão de Cadastro
-        self.cadastro_button = QPushButton("Cadastrar")
-        self.cadastro_button.clicked.connect(self.handle_cadastro)
-        layout.addWidget(self.cadastro_button)
+        layout.addRow("Nome:", self.nome_input)
+        layout.addRow("Usuário:", self.usuario_input)
+        layout.addRow("Cidade:", self.cidade_input)
+        layout.addRow("E-mail:", self.cadastro_email_input)
+        layout.addRow("Senha:", self.cadastro_password_input)
+        layout.addRow("Confirme a Senha:", self.confirm_password_input)
+        layout.addRow(btn_cadastrar)
 
-    def create_password_field(self):
-        password_layout = QHBoxLayout()
+        tab_cadastro.setLayout(layout)
+        return tab_cadastro
+
+    def criar_password_field(self, placeholder):
+        container = QWidget()
+        layout = QHBoxLayout()
+
         password_input = QLineEdit()
-        password_input.setPlaceholderText("Digite sua senha")
+        password_input.setPlaceholderText(placeholder)
         password_input.setEchoMode(QLineEdit.Password)
 
-        toggle_button = QPushButton()
-        toggle_button.setIcon(QIcon("assets/icons/eye_closed.png"))
-        toggle_button.setFixedSize(30, 30)
-        toggle_button.setCheckable(True)
-        toggle_button.setStyleSheet("background-color: transparent; border: none;")
-        toggle_button.toggled.connect(lambda checked: self.toggle_password_visibility(checked, password_input, toggle_button))
+        btn_toggle = QPushButton("👁")
+        btn_toggle.setCheckable(True)
+        btn_toggle.setMaximumWidth(30)
 
-        password_layout.addWidget(password_input)
-        password_layout.addWidget(toggle_button)
+        def toggle_password():
+            if btn_toggle.isChecked():
+                password_input.setEchoMode(QLineEdit.Normal)
+                btn_toggle.setText("🙈")
+            else:
+                password_input.setEchoMode(QLineEdit.Password)
+                btn_toggle.setText("👁")
 
-        password_widget = QWidget()
-        password_widget.setLayout(password_layout)
-        return password_widget, toggle_button
+        btn_toggle.clicked.connect(toggle_password)
+        layout.addWidget(password_input)
+        layout.addWidget(btn_toggle)
+        container.setLayout(layout)
+        return container
 
-    def toggle_password_visibility(self, checked, password_input, toggle_button):
-        if checked:
-            password_input.setEchoMode(QLineEdit.Normal)
-            toggle_button.setIcon(QIcon("assets/icons/eye_open.png"))
-        else:
-            password_input.setEchoMode(QLineEdit.Password)
-            toggle_button.setIcon(QIcon("assets/icons/eye_closed.png"))
+    def is_valid_email(self, email):
+        return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
 
+    def handle_login(self):
+        usuario = self.login_usuario_input.text().strip()
+        senha = self.login_senha_input.findChild(QLineEdit).text()
 
+        if not usuario or not senha:
+            QMessageBox.warning(self, "Erro", "Por favor, preencha todos os campos.")
+            return
 
-    # No método handle_cadastro
+        try:
+            if self.usuario_model.validar_login(usuario, senha):
+                QMessageBox.information(self, "Sucesso", "Login realizado com sucesso!")
+                self.accept()
+            else:
+                QMessageBox.warning(self, "Erro", "Usuário ou senha inválidos.")
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao realizar login: {e}")
+
     def handle_cadastro(self):
-        """Realiza o cadastro de um novo usuário."""
         nome = self.nome_input.text().strip()
         usuario = self.usuario_input.text().strip()
         cidade = self.cidade_input.text().strip()
@@ -207,49 +134,35 @@ class LoginCadastroDialog(QDialog):
         senha = self.cadastro_password_input.findChild(QLineEdit).text()
         confirmacao = self.confirm_password_input.findChild(QLineEdit).text()
 
-        # Verificação de campos vazios
         if not nome or not usuario or not cidade or not email or not senha:
             QMessageBox.warning(self, "Erro", "Todos os campos devem ser preenchidos.")
             return
 
-        # Verificação de senha
+        if not self.is_valid_email(email):
+            QMessageBox.warning(self, "Erro", "E-mail inválido.")
+            return
+
         if senha != confirmacao:
             QMessageBox.warning(self, "Erro", "As senhas não conferem.")
             return
 
-        # Gerar hash da senha com bcrypt
-        senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-
         try:
-            user_id = self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade, "comum")
-            QMessageBox.information(self, "Cadastro", "Cadastro realizado com sucesso! Aguarde aprovação.")
+            senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade, "comum")
+            QMessageBox.information(self, "Cadastro", "Cadastro realizado com sucesso!")
             self.close()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao realizar cadastro: {e}")
 
-    # No método handle_login
-    def handle_login(self):
-        """Realiza a verificação de login."""
-        usuario = self.login_input.text().strip()
-        senha = self.password_input.text().strip()
-
-        try:
-            # Buscar o usuário e o hash da senha
-            user = self.usuario_model.buscar_usuario_por_login(usuario)
-            if user and bcrypt.checkpw(senha.encode(), user['senha'].encode()):
-                QMessageBox.information(self, "Bem-vindo", f"Login bem-sucedido, {user['usuario']}!")
-                self.accept()
-            else:
-                QMessageBox.warning(self, "Erro", "Usuário ou senha inválidos.")
-        except Exception as e:
-            QMessageBox.critical(self, "Erro", f"Erro ao realizar login: {e}")
-
-
     def handle_reset_password(self):
         email, ok = QInputDialog.getText(self, "Recuperação de Senha", "Digite seu e-mail:")
         if ok and email:
+            if not self.is_valid_email(email):
+                QMessageBox.warning(self, "Erro", "E-mail inválido.")
+                return
+
             try:
-                token = self.usuario_model.gerar_token_recuperacao(email)
-                QMessageBox.information(self, "Recuperação de Senha", f"Token enviado para {email}.")
+                self.usuario_model.enviar_token_recuperacao(email)
+                QMessageBox.information(self, "Recuperação de Senha", f"Token enviado para {email}. Verifique seu e-mail.")
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao enviar token: {e}")

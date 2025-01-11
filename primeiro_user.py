@@ -25,7 +25,7 @@ def criar_primeiro_admin():
         return
 
     # 🔒 Criptografa a senha
-    senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+    senha = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
     # 📥 Insere o admin no banco
     insert_query = """
@@ -35,7 +35,7 @@ def criar_primeiro_admin():
     """
     
     try:
-        result = db.execute_query(insert_query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
+        result = db.execute_query(insert_query, (usuario, senha, email, cidade, tipo_usuario), fetch_one=True)
         print(f"✅ Usuário admin criado com sucesso! ID: {result['id']}")
     except Exception as e:
         print(f"❌ Erro ao criar o admin: {e}")
