@@ -70,7 +70,7 @@ DROP TABLE IF EXISTS public.usuarios;
 CREATE TABLE IF NOT EXISTS public.usuarios (
     id SERIAL PRIMARY KEY,
     usuario VARCHAR(50) NOT NULL,
-    senha_hash VARCHAR(255) NOT NULL,
+    senha VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
     cidade VARCHAR(100) NOT NULL,  -- Cidade adicionada
     tipo_usuario VARCHAR(20) NOT NULL,

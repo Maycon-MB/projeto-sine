@@ -2,11 +2,12 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 
 class DatabaseConnection:
-    def __init__(self, dbname, user, password, host):
+    def __init__(self, dbname, user, password, host, port=5432):
         self.dbname = dbname
         self.user = user
         self.password = password
         self.host = host
+        self.port = port  # 🔥 Adiciona a porta
 
     def connect(self):
         """
@@ -17,44 +18,44 @@ class DatabaseConnection:
                 dbname=self.dbname,
                 user=self.user,
                 password=self.password,
-                host=self.host
+                host=self.host,
+                port=self.port
             )
         except psycopg2.OperationalError as e:
-            print(f"Erro de conexão: {e}")
-            raise ConnectionError(f"Erro ao conectar ao banco de dados: {e}")
-        except Exception as e:
-            print(f"Erro inesperado: {e}")
+            print(f"❌ Erro de conexão: {e}")
             raise ConnectionError(f"Erro ao conectar ao banco de dados: {e}")
 
     def execute_query(self, query, params=None, fetch_one=False, fetch_all=False):
         """
         Executa uma consulta SQL no banco de dados.
-        :param query: A consulta SQL a ser executada
-        :param params: Os parâmetros para a consulta
-        :param fetch_one: Se `True`, retorna um único resultado
-        :param fetch_all: Se `True`, retorna todos os resultados
+
+        :param query: Consulta SQL a ser executada.
+        :param params: Parâmetros para a consulta.
+        :param fetch_one: Retorna um único resultado se True.
+        :param fetch_all: Retorna todos os resultados se True.
         """
         try:
-            conn = self.connect()
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
-            cursor.execute(query, params)
-            
-            if fetch_one:
-                result = cursor.fetchone()
-            elif fetch_all:
-                result = cursor.fetchall()
-            else:
-                result = None
+            with self.connect() as conn:  # 🔥 Context manager para segurança
+                with conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                    cursor.execute(query, params)
 
-            conn.commit()
-            cursor.close()
-            conn.close()
-            return result
+                    # 🔍 Decide qual resultado retornar
+                    if fetch_one:
+                        result = cursor.fetchone()
+                    elif fetch_all:
+                        result = cursor.fetchall()
+                    else:
+                        result = None
+
+                    # ✅ Commit apenas se a consulta modificar dados
+                    if query.strip().lower().startswith(("insert", "update", "delete")):
+                        conn.commit()
+
+                    return result
+
+        except psycopg2.OperationalError as e:
+            print(f"❌ Erro de conexão com o banco: {e}")
+            raise RuntimeError(f"Erro de conexão: {e}")
         except psycopg2.Error as e:
-            print(f"Erro SQL: {e}")
-            raise RuntimeError(f"Erro ao executar consulta: {e}")
-        except Exception as e:
-            print(f"Erro inesperado: {e}")
-            raise RuntimeError(f"Erro ao executar consulta: {e}")
-
-
+            print(f"❌ Erro na execução da query: {e}")
+            raise RuntimeError(f"Erro na execução da consulta: {e}")
