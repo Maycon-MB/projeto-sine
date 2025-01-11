@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
     QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QPushButton, QLabel, QMessageBox, QDialog
 )
@@ -60,7 +61,7 @@ class MainWindow(QMainWindow):
             "Consultar Currículos": "search-icon",
             "Configurações": "settings-icon",
         }
-
+    
         for name, icon_base in self.button_info.items():
             btn = QPushButton(name)
             btn.setIcon(QIcon(self._get_icon_path(icon_base)))
@@ -163,7 +164,8 @@ class MainWindow(QMainWindow):
 
     def _update_notification_count(self):
         try:
-            count = len(self.usuario_model.listar_aprovacoes_pendentes())
+            # Passa o ID do usuário logado para listar as aprovações pendentes com base na cidade
+            count = len(self.usuario_model.listar_aprovacoes_pendentes(usuario_id=self.usuario_id))
             self.notification_count_label.setText(str(count))
             self.notification_count_label.setVisible(count > 0)
         except Exception as e:
@@ -178,7 +180,11 @@ class MainWindow(QMainWindow):
             QApplication.quit()
 
     def _get_icon_path(self, icon_base):
-        return str(self.icons_dir / f"{icon_base}.svg")
+        icon_path = self.icons_dir / f"{icon_base}.svg"
+        if not icon_path.exists():
+            print(f"Ícone não encontrado: {icon_path}")
+        return str(icon_path)
+
 
     def _navigate(self, screen_name):
         for name, btn in self.buttons.items():

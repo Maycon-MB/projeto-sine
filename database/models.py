@@ -1,5 +1,6 @@
 from database.connection import DatabaseConnection
 from email_utils import enviar_email
+import bcrypt
 
 
 class CurriculoModel:
@@ -210,7 +211,10 @@ class UsuarioModel:
     def __init__(self, db_connection):
         self.db = db_connection
 
-    def cadastrar_usuario(self, usuario, senha_hash, email, cidade, tipo_usuario):
+    def cadastrar_usuario(self, usuario, senha, email, cidade, tipo_usuario):
+        # 🔒 Criptografar a senha
+        senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+
         query = """
         INSERT INTO usuarios (usuario, senha_hash, email, cidade, tipo_usuario)
         VALUES (%s, %s, %s, %s, %s)
@@ -218,8 +222,7 @@ class UsuarioModel:
         """
         try:
             result = self.db.execute_query(query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
-            # Envia solicitação para aprovação
-            self._enviar_aprovacao(result['id'], cidade)
+            self._enviar_aprovacao(result['id'], cidade)  # Envia solicitação para aprovação
             return result['id']
         except Exception as e:
             raise RuntimeError(f"Erro ao cadastrar usuário: {e}")
@@ -232,21 +235,17 @@ class UsuarioModel:
         self.db.execute_query(query, (usuario_id, cidade))
 
     def listar_aprovacoes_pendentes(self, cidade_admin):
-        """
-        Retorna as aprovações pendentes filtradas pela cidade do admin.
-        """
         query = """
-            SELECT a.id, u.usuario, u.email, a.criado_em
-            FROM aprovacoes a
-            INNER JOIN usuarios u ON a.usuario_id = u.id
-            WHERE a.status_aprovacao = 'pendente' AND a.cidade = %s
-            ORDER BY a.criado_em ASC;
+        SELECT a.id, u.usuario, u.email, a.criado_em
+        FROM aprovacoes a
+        INNER JOIN usuarios u ON a.usuario_id = u.id
+        WHERE a.status_aprovacao = 'pendente' AND a.cidade = %s
+        ORDER BY a.criado_em ASC;
         """
         try:
             return self.db.execute_query(query, (cidade_admin,), fetch_all=True)
         except Exception as e:
-            print(f"Erro ao listar aprovações pendentes: {e}")
-            return []
+            raise RuntimeError(f"Erro ao listar aprovações pendentes: {e}")
 
 
 
@@ -330,19 +329,26 @@ class UsuarioModel:
         except Exception as e:
             raise RuntimeError(f"Erro ao redefinir senha: {e}")
 
-    def validar_login(self, usuario_ou_email, senha_hash):
-        """
-        Verifica as credenciais do usuário no banco de dados.
-        """
-        query = """
-        SELECT id, usuario, email, tipo_usuario
-        FROM usuarios
-        WHERE (usuario = %s OR email = %s) AND senha_hash = %s AND status_aprovacao = 'aprovado';
-        """
+    def validar_login(self, usuario, senha):
+        query = "SELECT senha_hash FROM usuarios WHERE usuario = %s OR email = %s"
         try:
-            result = self.db.execute_query(query, (usuario_ou_email, usuario_ou_email, senha_hash), fetch_one=True)
-            return result  # Retorna os dados do usuário se encontrado
+            result = self.db.execute_query(query, (usuario, usuario), fetch_one=True)
+            if result:
+                senha_hash = result['senha_hash']
+                # 🔍 Comparar senha digitada com o hash
+                if bcrypt.checkpw(senha.encode(), senha_hash.encode()):
+                    return True
+            return False
         except Exception as e:
-            print(f"Erro ao validar login: {e}")
-            return None
+            raise RuntimeError(f"Erro ao validar login: {e}")
 
+    def buscar_usuario_por_login(self, usuario):
+        """
+        Busca um usuário no banco de dados pelo nome de usuário ou email.
+        """
+        query = "SELECT usuario, senha FROM usuarios WHERE usuario = %s OR email = %s"
+        try:
+            return self.db.execute_query(query, (usuario, usuario), fetch_one=True)
+        except Exception as e:
+            print(f"Erro ao buscar usuário: {e}")
+            raise
