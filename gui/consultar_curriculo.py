@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView
-from database.models import CurriculoModel
+from database.curriculo_model import CurriculoModel
 from gui.editar_curriculo import EditDialog
 
 

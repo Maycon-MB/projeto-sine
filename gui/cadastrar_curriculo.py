@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent, QIcon
 import re
 from database.connection import DatabaseConnection
-from database.models import CurriculoModel
+from database.curriculo_model import CurriculoModel
 
 class CadastroWidget(QWidget):
     def __init__(self):
