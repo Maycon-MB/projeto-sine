@@ -1,7 +1,7 @@
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QSpinBox, QPushButton, QComboBox, QMessageBox
 )
-from database.models import CurriculoModel
+from database.curriculo_model import CurriculoModel
 
 
 class EditDialog(QDialog):

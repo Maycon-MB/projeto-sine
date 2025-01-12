@@ -118,13 +118,16 @@ class LoginCadastroDialog(QDialog):
             return
 
         try:
-            if self.usuario_model.validar_login(usuario, senha):
+            usuario_info = self.usuario_model.buscar_usuario_por_login(usuario)
+            if usuario_info and bcrypt.checkpw(senha.encode(), usuario_info['senha'].encode()):
                 QMessageBox.information(self, "Sucesso", "Login realizado com sucesso!")
+                self.usuario_logado = usuario_info  # ✅ Armazena o usuário logado
                 self.accept()
             else:
                 QMessageBox.warning(self, "Erro", "Usuário ou senha inválidos.")
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao realizar login: {e}")
+
 
     def handle_cadastro(self):
         nome = self.nome_input.text().strip()

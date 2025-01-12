@@ -12,12 +12,13 @@ from gui.consultar_curriculo import ConsultaWidget
 from gui.notificacoes import TelaNotificacoes
 from gui.login_cadastro import LoginCadastroDialog  # Tela de login/cadastro
 from database.connection import DatabaseConnection
-from database.models import UsuarioModel
+from database.usuario_model import UsuarioModel
 
 
 class MainWindow(QMainWindow):
-    def __init__(self, db_connection):
+    def __init__(self, db_connection, usuario_id):
         super().__init__()
+        self.usuario_id = usuario_id  # Define o ID do usuário logado
         self.setWindowTitle("Aplicação com Sidebar")
 
         # Carregar configurações salvas
@@ -266,7 +267,7 @@ if __name__ == "__main__":
     # Exibe a tela de login/cadastro antes da janela principal
     login_dialog = LoginCadastroDialog(usuario_model)
     if login_dialog.exec() == QDialog.Accepted:
-        # Usuário autenticado, inicia a janela principal
-        window = MainWindow(db_connection)
+        usuario_logado = login_dialog.usuario_logado  # Supondo que armazene o usuário logado
+        window = MainWindow(db_connection, usuario_logado['id'])
         window.show()
         app.exec()
