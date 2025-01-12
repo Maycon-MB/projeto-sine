@@ -14,7 +14,7 @@ def criar_primeiro_admin():
     email = "mayconbruno.dev@gmail.com"
     senha = "admin"  # Defina uma senha segura
     cidade = "Nilópolis"
-    tipo_usuario = "admin"
+    tipo_usuario = "master"
 
     # 🔍 Verifica se o admin já existe
     check_query = "SELECT id FROM usuarios WHERE usuario = %s OR email = %s;"

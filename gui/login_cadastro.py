@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import ( 
+from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox, QTabWidget,
     QWidget, QFormLayout, QHBoxLayout, QInputDialog
 )
@@ -146,7 +146,20 @@ class LoginCadastroDialog(QDialog):
             QMessageBox.warning(self, "Erro", "As senhas não conferem.")
             return
 
+        if not re.match(r"^[a-zA-Z0-9_]+$", usuario):
+            QMessageBox.warning(self, "Erro", "O nome de usuário contém caracteres inválidos.")
+            return
+
         try:
+            # Verificar duplicidade antes de cadastrar
+            if self.usuario_model.verificar_email_existente(email):
+                QMessageBox.warning(self, "Erro", "E-mail já cadastrado.")
+                return
+
+            if self.usuario_model.verificar_usuario_existente(usuario):
+                QMessageBox.warning(self, "Erro", "Usuário já cadastrado.")
+                return
+
             senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade, "comum")
             QMessageBox.information(self, "Cadastro", "Cadastro realizado com sucesso!")
@@ -162,6 +175,10 @@ class LoginCadastroDialog(QDialog):
                 return
 
             try:
+                if not self.usuario_model.verificar_email_existente(email):
+                    QMessageBox.warning(self, "Erro", "E-mail não cadastrado.")
+                    return
+
                 self.usuario_model.enviar_token_recuperacao(email)
                 QMessageBox.information(self, "Recuperação de Senha", f"Token enviado para {email}. Verifique seu e-mail.")
             except Exception as e:

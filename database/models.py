@@ -206,7 +206,6 @@ class CurriculoModel:
         query = "UPDATE curriculo SET status = %s WHERE id = %s"
         self.db.execute_query(query, (novo_status, curriculo_id))
 
-
 class UsuarioModel:
     def __init__(self, db_connection):
         self.db = db_connection
@@ -247,18 +246,41 @@ class UsuarioModel:
         except Exception as e:
             raise RuntimeError(f"Erro ao listar aprovações pendentes: {e}")
 
-
+    def listar_aprovacoes_paginadas(self, status=None, page=1, page_size=10):
+        """
+        Lista aprovações com paginação e filtro por status.
+        """
+        query = """
+        SELECT a.id, u.usuario, u.email, u.cidade, a.criado_em
+        FROM aprovacoes a
+        INNER JOIN usuarios u ON a.usuario_id = u.id
+        WHERE (%s IS NULL OR a.status_aprovacao = %s)
+        ORDER BY a.criado_em DESC
+        LIMIT %s OFFSET %s;
+        """
+        offset = (page - 1) * page_size
+        try:
+            return self.db.execute_query(query, (status, status, page_size, offset), fetch_all=True)
+        except Exception as e:
+            raise RuntimeError(f"Erro ao listar aprovações paginadas: {e}")
 
     def atualizar_status_aprovacao(self, aprovacao_id, novo_status):
-        """
-        Atualiza o status de uma aprovação para 'aprovado' ou 'rejeitado'.
-        """
         query = """
             UPDATE aprovacoes
             SET status_aprovacao = %s, atualizado_em = NOW()
             WHERE id = %s;
         """
-        self.db.execute(query, (novo_status, aprovacao_id))
+        log_query = """
+            INSERT INTO logs_auditoria (notificacao_id, usuario_id, acao)
+            VALUES (%s, %s, %s);
+        """
+        try:
+            self.db.execute_query(query, (novo_status, aprovacao_id))
+            usuario_id = ...  # Recupere o ID do usuário atual, dependendo de como você autentica
+            self.db.execute_query(log_query, (aprovacao_id, usuario_id, novo_status))
+        except Exception as e:
+            raise RuntimeError(f"Erro ao atualizar status de aprovação: {e}")
+
 
 
     def aprovar_usuario(self, aprovacao_id):
