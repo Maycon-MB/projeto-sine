@@ -72,12 +72,11 @@ CREATE TABLE IF NOT EXISTS public.usuarios (
     usuario VARCHAR(50) NOT NULL,
     senha VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
-    cidade VARCHAR(100) NOT NULL,  -- Cidade adicionada
-    tipo_usuario VARCHAR(20) NOT NULL,
+    cidade VARCHAR(100) NOT NULL,
+    tipo_usuario VARCHAR(20) NOT NULL CHECK (tipo_usuario IN ('admin', 'comum', 'master')), -- Incluído 'master'
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT usuarios_email_key UNIQUE (email),
-    CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
-    CONSTRAINT usuarios_tipo_usuario_check CHECK (tipo_usuario IN ('admin', 'comum'))
+    CONSTRAINT usuarios_usuario_key UNIQUE (usuario)
 )
 TABLESPACE pg_default;
 
@@ -90,7 +89,7 @@ DROP TABLE IF EXISTS public.aprovacoes;
 CREATE TABLE IF NOT EXISTS public.aprovacoes (
     id SERIAL PRIMARY KEY,
     usuario_id INTEGER NOT NULL,
-    cidade VARCHAR(100) NOT NULL,  -- Cidade vinculada à aprovação
+    cidade VARCHAR(100) NOT NULL,
     status_aprovacao VARCHAR(20) DEFAULT 'pendente',
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -132,3 +131,33 @@ ON
 
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
+
+-- Nova tabela: notificacoes
+DROP TABLE IF EXISTS public.notificacoes;
+
+CREATE TABLE IF NOT EXISTS public.notificacoes (
+    id SERIAL PRIMARY KEY,
+    usuario_id INTEGER NOT NULL,
+    evento VARCHAR(255) NOT NULL, -- Exemplo: 'novo cadastro', 'nova experiência'
+    descricao TEXT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    lido BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
+);
+
+-- Índices para melhorar consultas na tabela notificacoes
+CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario_id ON public.notificacoes (usuario_id);
+CREATE INDEX IF NOT EXISTS idx_notificacoes_evento ON public.notificacoes (evento);
+CREATE INDEX IF NOT EXISTS idx_notificacoes_lido ON public.notificacoes (lido);
+
+
+-- Tabela: logs_auditoria
+CREATE TABLE IF NOT EXISTS logs_auditoria (
+    id SERIAL PRIMARY KEY,
+    notificacao_id INTEGER NOT NULL,
+    usuario_id INTEGER NOT NULL,
+    acao VARCHAR(20) NOT NULL CHECK (acao IN ('aprovado', 'rejeitado')),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (notificacao_id) REFERENCES aprovacoes (id) ON DELETE CASCADE,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios (id) ON DELETE CASCADE
+);
