@@ -175,8 +175,8 @@ class LoginCadastroDialog(QDialog):
         usuario = self.usuario_input.text().strip()
         cidade = self.cidade_input.text().strip()
         email = self.cadastro_email_input.text().strip()
-        senha = self.cadastro_password_input.findChild(QLineEdit).text()
-        confirmacao = self.confirm_password_input.findChild(QLineEdit).text()
+        senha = self.cadastro_password_input.text()  # Remover .findChild(QLineEdit) e acessar diretamente
+        confirmacao = self.confirm_password_input.text()  # Remover .findChild(QLineEdit) e acessar diretamente
 
         if not nome or not usuario or not cidade or not email or not senha:
             QMessageBox.warning(self, "Erro", "Todos os campos devem ser preenchidos.")
