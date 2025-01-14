@@ -2,9 +2,10 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox, QTabWidget,
     QWidget, QFormLayout, QHBoxLayout, QInputDialog
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QEvent
 import re
 import bcrypt
+
 
 class LoginCadastroDialog(QDialog):
     def __init__(self, usuario_model, parent=None):
@@ -44,6 +45,9 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(btn_login)
         layout.addWidget(btn_recuperar_senha, alignment=Qt.AlignRight)
 
+        self.configurar_transicao_enter([self.login_usuario_input, self.login_senha_input.findChild(QLineEdit)])
+
+
         tab_login.setLayout(layout)
         return tab_login
 
@@ -63,8 +67,13 @@ class LoginCadastroDialog(QDialog):
         self.cadastro_email_input = QLineEdit()
         self.cadastro_email_input.setPlaceholderText("E-mail")
 
-        self.cadastro_password_input = self.criar_password_field("Senha")
-        self.confirm_password_input = self.criar_password_field("Confirme a senha")
+        self.cadastro_password_input = QLineEdit()
+        self.cadastro_password_input.setPlaceholderText("Senha")
+        self.cadastro_password_input.setEchoMode(QLineEdit.Password)
+
+        self.confirm_password_input = QLineEdit()
+        self.confirm_password_input.setPlaceholderText("Confirme a senha")
+        self.confirm_password_input.setEchoMode(QLineEdit.Password)
 
         btn_cadastrar = QPushButton("Cadastrar")
         btn_cadastrar.clicked.connect(self.handle_cadastro)
@@ -77,8 +86,19 @@ class LoginCadastroDialog(QDialog):
         layout.addRow("Confirme a Senha:", self.confirm_password_input)
         layout.addRow(btn_cadastrar)
 
+        # Configurar navegação com Enter
+        self.configurar_transicao_enter([
+            self.nome_input,
+            self.usuario_input,
+            self.cidade_input,
+            self.cadastro_email_input,
+            self.cadastro_password_input,
+            self.confirm_password_input
+        ])
+
         tab_cadastro.setLayout(layout)
         return tab_cadastro
+
 
     def criar_password_field(self, placeholder):
         container = QWidget()
@@ -105,6 +125,28 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(btn_toggle)
         container.setLayout(layout)
         return container
+
+    def configurar_transicao_enter(self, widgets):
+        """Configura a navegação entre widgets usando Enter."""
+        for i, widget in enumerate(widgets):
+            widget.setProperty("index", i)  # Define o índice do widget
+            widget.installEventFilter(self)  # Instala o filtro de eventos
+
+    def eventFilter(self, source, event):
+        """Captura o evento Enter para alternar entre widgets."""
+        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if isinstance(source, QLineEdit):  # Verifica se o evento ocorreu em um QLineEdit
+                current_index = source.property("index")
+                if current_index is not None:
+                    # Calcula o próximo índice
+                    next_index = current_index + 1
+                    # Procura o próximo widget com base no índice
+                    widgets = source.parentWidget().findChildren(QLineEdit)
+                    if next_index < len(widgets):
+                        widgets[next_index].setFocus()
+                        return True
+        return super().eventFilter(source, event)
+
 
     def is_valid_email(self, email):
         return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
