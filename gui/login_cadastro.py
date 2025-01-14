@@ -28,6 +28,7 @@ class LoginCadastroDialog(QDialog):
 
         self.login_usuario_input = QLineEdit()
         self.login_usuario_input.setPlaceholderText("Usuário ou E-mail")
+        
 
         self.login_senha_input = self.criar_password_field("Senha")
 
@@ -46,7 +47,6 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(btn_recuperar_senha, alignment=Qt.AlignRight)
 
         self.configurar_transicao_enter([self.login_usuario_input, self.login_senha_input.findChild(QLineEdit)])
-
 
         tab_login.setLayout(layout)
         return tab_login
@@ -170,7 +170,6 @@ class LoginCadastroDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao realizar login: {e}")
 
-
     def handle_cadastro(self):
         nome = self.nome_input.text().strip()
         usuario = self.usuario_input.text().strip()
@@ -228,3 +227,8 @@ class LoginCadastroDialog(QDialog):
                 QMessageBox.information(self, "Recuperação de Senha", f"Token enviado para {email}. Verifique seu e-mail.")
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao enviar token: {e}")
+
+    def showEvent(self, event):
+        """Coloca o foco no campo de Login quando a janela for exibida."""
+        self.login_usuario_input.setFocus()  # Foca no campo "Usuário ou E-mail"
+        super().showEvent(event)  # Chama o evento showEvent da classe base
