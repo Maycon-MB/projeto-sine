@@ -1,4 +1,3 @@
-# notificacoes.py
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHBoxLayout, QWidget, QPushButton, QMessageBox, QComboBox, QLabel
 )
