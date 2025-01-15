@@ -6,7 +6,23 @@ class UsuarioModel:
     def __init__(self, db_connection):
         self.db = db_connection
 
+    def verificar_email_existente(self, email):
+        query = "SELECT 1 FROM usuarios WHERE email = %s"
+        result = self.db.execute_query(query, (email,), fetch_one=True)
+        return result is not None
+
+    def verificar_usuario_existente(self, usuario):
+        query = "SELECT 1 FROM usuarios WHERE usuario = %s"
+        result = self.db.execute_query(query, (usuario,), fetch_one=True)
+        return result is not None
+
+
     def cadastrar_usuario(self, usuario, senha, email, cidade, tipo_usuario):
+        if self.verificar_email_existente(email):
+            raise ValueError("E-mail já cadastrado.")
+        if self.verificar_usuario_existente(usuario):
+            raise ValueError("Usuário já cadastrado.")
+
         senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
 
         query = """
@@ -14,12 +30,9 @@ class UsuarioModel:
         VALUES (%s, %s, %s, %s, %s)
         RETURNING id;
         """
-        try:
-            result = self.db.execute_query(query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
-            self._enviar_aprovacao(result['id'], cidade)
-            return result['id']
-        except Exception as e:
-            raise RuntimeError(f"Erro ao cadastrar usuário: {e}")
+        result = self.db.execute_query(query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
+        self._enviar_aprovacao(result['id'], cidade)
+        return result['id']
 
     def _enviar_aprovacao(self, usuario_id, cidade):
         query = """
@@ -64,7 +77,7 @@ class UsuarioModel:
         except Exception as e:
             raise RuntimeError(f"Erro ao listar aprovações paginadas: {e}")
 
-    def atualizar_status_aprovacao(self, aprovacao_id, novo_status):
+    def atualizar_status_aprovacao(self, aprovacao_id, novo_status, usuario_id):
         query = """
             UPDATE aprovacoes
             SET status_aprovacao = %s, atualizado_em = NOW()
@@ -74,12 +87,8 @@ class UsuarioModel:
             INSERT INTO logs_auditoria (notificacao_id, usuario_id, acao)
             VALUES (%s, %s, %s);
         """
-        try:
-            self.db.execute_query(query, (novo_status, aprovacao_id))
-            usuario_id = ...  # Recupere o ID do usuário atual, dependendo de como você autentica
-            self.db.execute_query(log_query, (aprovacao_id, usuario_id, novo_status))
-        except Exception as e:
-            raise RuntimeError(f"Erro ao atualizar status de aprovação: {e}")
+        self.db.execute_query(query, (novo_status, aprovacao_id))
+        self.db.execute_query(log_query, (aprovacao_id, usuario_id, novo_status))
 
     def aprovar_usuario(self, aprovacao_id):
         query = """
