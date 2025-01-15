@@ -7,6 +7,11 @@ class CurriculoModel:
         """
         self.db = db_connection
 
+    def validar_telefone(self, telefone):
+        import re
+        pattern = r"^\(\d{2}\) \d{4,5}-\d{4}$"
+        return re.match(pattern, telefone)
+
     def is_duplicate_nome(self, nome):
         """
         Verifica se já existe um currículo com o mesmo nome.
@@ -152,35 +157,26 @@ class CurriculoModel:
             raise
 
     def insert_curriculo(self, nome, idade, telefone, escolaridade):
-        """
-        Insere um novo currículo no banco de dados e retorna o ID gerado.
-        """
+        if not self.validar_telefone(telefone):
+            raise ValueError("Telefone inválido. Formato correto: (XX) XXXXX-XXXX")
+
         query = """
-        INSERT INTO curriculo (nome, idade, telefone, escolaridade)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO curriculo (nome, idade, telefone, escolaridade, status)
+        VALUES (%s, %s, %s, %s, 'disponível')
         RETURNING id;
         """
-        try:
-            result = self.db.execute_query(query, (nome, idade, telefone, escolaridade), fetch_one=True)
-            return result['id']
-        except Exception as e:
-            print(f"Erro ao inserir currículo: {e}")
-            raise
+        result = self.db.execute_query(query, (nome, idade, telefone, escolaridade), fetch_one=True)
+        return result['id']
 
     def insert_experiencias(self, id_curriculo, experiencias):
-        """
-        Insere experiências relacionadas a um currículo, se houver.
-        """
         query = """
         INSERT INTO experiencias (id_curriculo, cargo, anos_experiencia)
         VALUES (%s, %s, %s);
         """
-        try:
-            for cargo, anos_experiencia in experiencias:
-                self.db.execute_query(query, (id_curriculo, cargo, anos_experiencia))
-        except Exception as e:
-            print(f"Erro ao inserir experiências: {e}")
-            raise
+        for cargo, anos_experiencia in experiencias:
+            if not cargo or anos_experiencia <= 0:
+                raise ValueError("Experiência inválida. Preencha todos os campos corretamente.")
+            self.db.execute_query(query, (id_curriculo, cargo, anos_experiencia))
 
     def fetch_experiencias(self, id_curriculo):
         """

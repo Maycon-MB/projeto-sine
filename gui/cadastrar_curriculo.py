@@ -14,8 +14,8 @@ class CadastroWidget(QWidget):
         self.db_connection = DatabaseConnection(
             dbname="projeto_sine",
             user="postgres",
-            password="admin",
-            host="localhost"
+            password="teste",
+            host="192.168.1.213"
         )
         self.curriculo_model = CurriculoModel(self.db_connection)
 
