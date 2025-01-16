@@ -28,7 +28,7 @@ class LoginCadastroDialog(QDialog):
 
         self.login_usuario_input = QLineEdit()
         self.login_usuario_input.setPlaceholderText("Usuário ou E-mail")
-        
+        self.login_usuario_input.editingFinished.connect(lambda: self.login_usuario_input.setText(self.login_usuario_input.text().upper()))
 
         self.login_senha_input = self.criar_password_field("Senha")
 
@@ -57,12 +57,15 @@ class LoginCadastroDialog(QDialog):
 
         self.nome_input = QLineEdit()
         self.nome_input.setPlaceholderText("Nome completo")
+        self.nome_input.editingFinished.connect(lambda: self.nome_input.setText(self.nome_input.text().upper()))
 
         self.usuario_input = QLineEdit()
         self.usuario_input.setPlaceholderText("Usuário")
+        self.usuario_input.editingFinished.connect(lambda: self.usuario_input.setText(self.usuario_input.text().upper()))
 
         self.cidade_input = QLineEdit()
         self.cidade_input.setPlaceholderText("Cidade")
+        self.cidade_input.editingFinished.connect(lambda: self.cidade_input.setText(self.cidade_input.text().upper()))
 
         self.cadastro_email_input = QLineEdit()
         self.cadastro_email_input.setPlaceholderText("E-mail")
@@ -86,7 +89,6 @@ class LoginCadastroDialog(QDialog):
         layout.addRow("Confirme a Senha:", self.confirm_password_input)
         layout.addRow(btn_cadastrar)
 
-        # Configurar navegação com Enter
         self.configurar_transicao_enter([
             self.nome_input,
             self.usuario_input,
@@ -98,7 +100,6 @@ class LoginCadastroDialog(QDialog):
 
         tab_cadastro.setLayout(layout)
         return tab_cadastro
-
 
     def criar_password_field(self, placeholder):
         container = QWidget()

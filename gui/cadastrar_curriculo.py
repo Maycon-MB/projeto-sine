@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent, QIcon
 import re
 from database.connection import DatabaseConnection
-from database.curriculo_model import CurriculoModel
+from models.curriculo_model import CurriculoModel
 
 class CadastroWidget(QWidget):
     def __init__(self):
@@ -14,8 +14,8 @@ class CadastroWidget(QWidget):
         self.db_connection = DatabaseConnection(
             dbname="projeto_sine",
             user="postgres",
-            password="teste",
-            host="192.168.1.213"
+            password="admin",
+            host="localhost"
         )
         self.curriculo_model = CurriculoModel(self.db_connection)
 

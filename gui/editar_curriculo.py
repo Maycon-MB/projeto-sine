@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt, QEvent
 from PySide6.QtGui import QKeyEvent
-from database.curriculo_model import CurriculoModel
+from models.curriculo_model import CurriculoModel
 
 
 class EditDialog(QDialog):
