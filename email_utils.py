@@ -1,26 +1,35 @@
 import smtplib
+import os
 from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import logging
+from dotenv import load_dotenv
+
+# Carregar as variáveis de ambiente do arquivo email.env
+load_dotenv('email.env')
+
+# Configuração de logs
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+
+# Variáveis de configuração de e-mail
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USER = os.getenv('EMAIL_USER')
+EMAIL_PASS = os.getenv('EMAIL_PASS')
 
 def enviar_email(destinatario, assunto, mensagem):
-    """
-    Envia um e-mail usando o protocolo SMTP.
-    :param destinatario: E-mail do destinatário.
-    :param assunto: Assunto do e-mail.
-    :param mensagem: Corpo do e-mail.
-    """
-    remetente = "seu_email@gmail.com"
-    senha = "sua_senha_aqui"
-
-    msg = MIMEText(mensagem)
-    msg["Subject"] = assunto
-    msg["From"] = remetente
-    msg["To"] = destinatario
-
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+        msg = MIMEMultipart()
+        msg['From'] = EMAIL_USER
+        msg['To'] = destinatario
+        msg['Subject'] = assunto
+        msg.attach(MIMEText(mensagem, 'plain'))
+
+        with smtplib.SMTP(EMAIL_HOST, EMAIL_PORT) as server:
             server.starttls()
-            server.login(remetente, senha)
-            server.sendmail(remetente, destinatario, msg.as_string())
-            print(f"E-mail enviado para {destinatario}")
+            server.login(EMAIL_USER, EMAIL_PASS)
+            server.sendmail(EMAIL_USER, destinatario, msg.as_string())
+            logging.info(f"E-mail enviado para {destinatario}")
     except Exception as e:
-        raise RuntimeError(f"Erro ao enviar e-mail: {e}")
+        logging.error(f"Erro ao enviar e-mail: {e}")
+        raise

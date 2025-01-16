@@ -1,6 +1,9 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHBoxLayout, QWidget, QPushButton, QMessageBox, QComboBox, QLabel
+    QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHBoxLayout,
+    QWidget, QPushButton, QMessageBox, QComboBox, QLabel, QHeaderView
 )
+from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt
 
 
 class TelaNotificacoes(QDialog):
@@ -8,7 +11,7 @@ class TelaNotificacoes(QDialog):
         super().__init__()
         self.model = model
         self.setWindowTitle("Notificações")
-        self.setMinimumSize(500, 400)
+        self.setMinimumSize(800, 600)
 
         # Variáveis de paginação
         self.page = 1
@@ -30,27 +33,35 @@ class TelaNotificacoes(QDialog):
 
         # Tabela de notificações
         self.tabela_notificacoes = QTableWidget()
-        self.tabela_notificacoes.setColumnCount(5)
-        self.tabela_notificacoes.setHorizontalHeaderLabels(["Usuário", "Email", "Cidade", "Data de Cadastro", "Ações"])
+        self.tabela_notificacoes.setColumnCount(6)
+        self.tabela_notificacoes.setHorizontalHeaderLabels(
+            ["Usuário", "Email", "Cidade", "Data de Cadastro", "Status", "Ações"]
+        )
+        self.tabela_notificacoes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.layout.addWidget(self.tabela_notificacoes)
 
         # Botões de paginação e atualização
         botoes_layout = QHBoxLayout()
         self.btn_anterior = QPushButton("Anterior")
         self.btn_anterior.clicked.connect(self.pagina_anterior)
-        self.btn_anterior.setEnabled(False)  # Desativado inicialmente
+        self.btn_anterior.setEnabled(False)
 
         self.btn_proxima = QPushButton("Próxima")
         self.btn_proxima.clicked.connect(self.pagina_proxima)
 
-        self.btn_atualizar = QPushButton("Atualizar")
+        self.btn_atualizar = QPushButton()
+        self.btn_atualizar.setIcon(QIcon("assets/icons/refresh-icon.svg"))
+        self.btn_atualizar.setToolTip("Atualizar")
         self.btn_atualizar.clicked.connect(self.carregar_notificacoes)
 
+        self.page_label = QLabel(f"Página: {self.page}")
         botoes_layout.addWidget(self.btn_anterior)
+        botoes_layout.addWidget(self.page_label)
         botoes_layout.addWidget(self.btn_proxima)
+        botoes_layout.addStretch()
         botoes_layout.addWidget(self.btn_atualizar)
-        self.layout.addLayout(botoes_layout)
 
+        self.layout.addLayout(botoes_layout)
         self.setLayout(self.layout)
 
         # Carregar notificações
@@ -58,7 +69,7 @@ class TelaNotificacoes(QDialog):
 
     def carregar_notificacoes(self):
         """
-        Carrega as notificações na tabela com base no filtro e paginação.
+        Carrega as notificações com base no filtro e paginação.
         """
         try:
             filtro_status = self.filtro_combo.currentText()
@@ -72,62 +83,59 @@ class TelaNotificacoes(QDialog):
             self.tabela_notificacoes.setRowCount(len(notificacoes))
 
             for row, notificacao in enumerate(notificacoes):
-                usuario_item = QTableWidgetItem(notificacao["usuario"])
-                email_item = QTableWidgetItem(notificacao["email"])
-                cidade_item = QTableWidgetItem(notificacao["cidade"])
-                data_item = QTableWidgetItem(notificacao["criado_em"])
+                self.tabela_notificacoes.setItem(row, 0, self._criar_celula(notificacao["usuario"]))
+                self.tabela_notificacoes.setItem(row, 1, self._criar_celula(notificacao["email"]))
+                self.tabela_notificacoes.setItem(row, 2, self._criar_celula(notificacao["cidade"]))
+                self.tabela_notificacoes.setItem(row, 3, self._criar_celula(notificacao["criado_em"]))
+                self.tabela_notificacoes.setItem(row, 4, self._criar_celula(notificacao["status_aprovacao"]))
 
-                # Botão de Aprovar
-                btn_aprovar = QPushButton("Aprovar")
+                # Botões de ação
+                btn_aprovar = QPushButton("✔")
+                btn_aprovar.setToolTip("Aprovar")
                 btn_aprovar.clicked.connect(lambda _, id=notificacao["id"]: self.aprovar(id))
 
-                # Botão de Rejeitar
-                btn_rejeitar = QPushButton("Rejeitar")
+                btn_rejeitar = QPushButton("✖")
+                btn_rejeitar.setToolTip("Rejeitar")
                 btn_rejeitar.clicked.connect(lambda _, id=notificacao["id"]: self.rejeitar(id))
 
-                self.tabela_notificacoes.setItem(row, 0, usuario_item)
-                self.tabela_notificacoes.setItem(row, 1, email_item)
-                self.tabela_notificacoes.setItem(row, 2, cidade_item)
-                self.tabela_notificacoes.setItem(row, 3, data_item)
-                self.tabela_notificacoes.setCellWidget(row, 4, self._criar_widget_acoes(btn_aprovar, btn_rejeitar))
+                self.tabela_notificacoes.setCellWidget(row, 5, self._criar_widget_acoes(btn_aprovar, btn_rejeitar))
 
-            # Atualizar estado dos botões de paginação
+            self.page_label.setText(f"Página: {self.page}")
             self.btn_anterior.setEnabled(self.page > 1)
             self.btn_proxima.setEnabled(len(notificacoes) == self.page_size)
 
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao carregar notificações: {str(e)}")
 
+    def _criar_celula(self, texto):
+        item = QTableWidgetItem(str(texto))
+        item.setTextAlignment(Qt.AlignCenter)
+        item.setToolTip(str(texto))
+        return item
+
     def _criar_widget_acoes(self, btn_aprovar, btn_rejeitar):
         widget = QWidget()
         layout = QHBoxLayout()
         layout.addWidget(btn_aprovar)
         layout.addWidget(btn_rejeitar)
+        layout.setAlignment(Qt.AlignCenter)
         widget.setLayout(layout)
         return widget
 
     def aprovar(self, aprovacao_id):
-        """
-        Aprova a solicitação com confirmação e registra log.
-        """
-        resposta = QMessageBox.question(self, "Confirmação", "Tem certeza que deseja aprovar esta solicitação?")
-        if resposta == QMessageBox.Yes:
+        if QMessageBox.question(self, "Confirmação", "Aprovar esta solicitação?") == QMessageBox.Yes:
             try:
                 self.model.atualizar_status_aprovacao(aprovacao_id, "aprovado")
-                QMessageBox.information(self, "Sucesso", "Aprovação concluída!")
+                QMessageBox.information(self, "Sucesso", "Solicitação aprovada!")
                 self.carregar_notificacoes()
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao aprovar: {str(e)}")
 
     def rejeitar(self, aprovacao_id):
-        """
-        Rejeita a solicitação com confirmação e registra log.
-        """
-        resposta = QMessageBox.question(self, "Confirmação", "Tem certeza que deseja rejeitar esta solicitação?")
-        if resposta == QMessageBox.Yes:
+        if QMessageBox.question(self, "Confirmação", "Rejeitar esta solicitação?") == QMessageBox.Yes:
             try:
                 self.model.atualizar_status_aprovacao(aprovacao_id, "rejeitado")
-                QMessageBox.information(self, "Sucesso", "Rejeição concluída!")
+                QMessageBox.information(self, "Sucesso", "Solicitação rejeitada!")
                 self.carregar_notificacoes()
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao rejeitar: {str(e)}")

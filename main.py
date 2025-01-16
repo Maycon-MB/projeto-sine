@@ -11,8 +11,10 @@ from gui.cadastrar_curriculo import CadastroWidget
 from gui.consultar_curriculo import ConsultaWidget
 from gui.notificacoes import TelaNotificacoes
 from gui.login_cadastro import LoginCadastroDialog  # Tela de login/cadastro
+from gui.dashboard import DashboardWidget
 from database.connection import DatabaseConnection
-from database.usuario_model import UsuarioModel
+from models.usuario_model import UsuarioModel
+from models.aprovacao_model import AprovacaoModel
 
 
 class MainWindow(QMainWindow):
@@ -37,6 +39,10 @@ class MainWindow(QMainWindow):
         # Inicializar modelo de usuários
         self.db_connection = db_connection
         self.usuario_model = UsuarioModel(self.db_connection)
+
+        # Inicializar modelo de aprovações
+        self.db_connection = db_connection
+        self.aprovacao_model = AprovacaoModel(self.db_connection)
 
         # Configuração do widget central
         central_widget = QWidget()
@@ -128,10 +134,14 @@ class MainWindow(QMainWindow):
 
         body_layout.addWidget(self.top_bar)
 
-        # Área de conteúdo principal
+        # ✅ Inicializar a área de conteúdo principal
         self.content_area = QStackedWidget()
-        self.content_area.addWidget(QLabel("Bem-vindo ao sistema!"))
 
+        # Adiciona a tela de Dashboard como "Home"
+        self.dashboard_widget = DashboardWidget(self.usuario_model, self.aprovacao_model, self._navigate)
+        self.content_area.addWidget(self.dashboard_widget)
+
+        # Adiciona os demais widgets
         self.cadastro_widget = CadastroWidget()
         self.content_area.addWidget(self.cadastro_widget)
 
@@ -142,7 +152,9 @@ class MainWindow(QMainWindow):
         self.configuracoes_widget = ConfiguracoesWidget(self.current_theme, self.apply_theme, self)
         self.content_area.addWidget(self.configuracoes_widget)
 
+        # ✅ Adiciona a content_area ao layout
         body_layout.addWidget(self.content_area, stretch=1)
+
 
         main_layout.addLayout(body_layout)
 
@@ -157,7 +169,7 @@ class MainWindow(QMainWindow):
 
     def _show_notifications(self):
         try:
-            notificacoes = TelaNotificacoes(self.usuario_model)
+            notificacoes = TelaNotificacoes(self.aprovacao_model)
             notificacoes.exec()
             self._update_notification_count()
         except Exception as e:
@@ -166,7 +178,7 @@ class MainWindow(QMainWindow):
     def _update_notification_count(self):
         try:
             # Passa o ID do usuário logado para listar as aprovações pendentes com base na cidade
-            count = len(self.usuario_model.listar_aprovacoes_pendentes(usuario_id=self.usuario_id))
+            count = len(self.aprovacao_model.listar_aprovacoes_pendentes(usuario_id=self.usuario_id))
             self.notification_count_label.setText(str(count))
             self.notification_count_label.setVisible(count > 0)
         except Exception as e:
@@ -192,13 +204,13 @@ class MainWindow(QMainWindow):
             btn.setChecked(name == screen_name)
 
         if screen_name == "Home":
-            self.content_area.setCurrentIndex(0)
+            self.content_area.setCurrentWidget(self.dashboard_widget)  # ✅ Dashboard
         elif screen_name == "Cadastrar Currículo":
-            self.content_area.setCurrentIndex(1)
+            self.content_area.setCurrentWidget(self.cadastro_widget)
         elif screen_name == "Consultar Currículos":
-            self.content_area.setCurrentIndex(2)
+            self.content_area.setCurrentWidget(self.consulta_widget)
         elif screen_name == "Configurações":
-            self.content_area.setCurrentIndex(3)
+            self.content_area.setCurrentWidget(self.configuracoes_widget)
 
     def apply_theme(self, theme):
         self.current_theme = theme
@@ -259,8 +271,8 @@ if __name__ == "__main__":
     db_connection = DatabaseConnection(
         dbname="projeto_sine",
         user="postgres",
-        password="teste",
-        host="192.168.1.213"
+        password="admin",
+        host="localhost"
     )
     usuario_model = UsuarioModel(db_connection)
 

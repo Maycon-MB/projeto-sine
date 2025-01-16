@@ -5,12 +5,12 @@ from database.connection import DatabaseConnection
 db = DatabaseConnection(
     dbname="projeto_sine",
     user="postgres",
-    password="admin",  # Altere se necessário
-    host="localhost"
+    password="teste",  # Altere se necessário
+    host="192.168.1.213"
 )
 
 def criar_primeiro_admin():
-    usuario = "Maycon"
+    usuario = "MAYCON"
     email = "mayconbruno.dev@gmail.com"
     senha = "admin"  # Defina uma senha segura
     cidade = "Nilópolis"
