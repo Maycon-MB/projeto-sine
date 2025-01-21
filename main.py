@@ -142,7 +142,7 @@ class MainWindow(QMainWindow):
         self.content_area.addWidget(self.dashboard_widget)
 
         # Adiciona os demais widgets
-        self.cadastro_widget = CadastroWidget()
+        self.cadastro_widget = CadastroWidget(self.db_connection)
         self.content_area.addWidget(self.cadastro_widget)
 
         self.consulta_widget = ConsultaWidget(self.db_connection)
@@ -271,8 +271,8 @@ if __name__ == "__main__":
     db_connection = DatabaseConnection(
         dbname="projeto_sine",
         user="postgres",
-        password="admin",
-        host="localhost"
+        password="teste",
+        host="192.168.1.213"
     )
     usuario_model = UsuarioModel(db_connection)
 
