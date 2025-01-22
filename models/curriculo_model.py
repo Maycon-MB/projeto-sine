@@ -121,42 +121,39 @@ class CurriculoModel:
                 print(f"Erro ao criar índices: {e}")
                 raise
 
-    def fetch_curriculos(self, filtros):
+    def fetch_curriculos(self, filtros, limite=10, offset=0):
         """
-        Busca currículos aplicando filtros dinâmicos.
+        Busca currículos aplicando filtros dinâmicos e paginação.
         """
         query = """
-        SELECT c.id AS curriculo_id, c.nome, c.cpf, c.sexo, c.data_nascimento, 
-            DATE_PART('year', AGE(c.data_nascimento)) AS idade, ci.nome AS cidade, 
-            c.telefone, c.telefone_extra, c.escolaridade, c.tem_ctps, 
-            c.vaga_encaminhada, c.servico, e.cargo, e.anos_experiencia, e.meses_experiencia
-        FROM curriculo c
-        LEFT JOIN experiencias e ON c.id = e.id_curriculo
-        LEFT JOIN cidades ci ON c.cidade_id = ci.id
-        WHERE (%s IS NULL OR c.nome ILIKE %s)
-        AND (%s IS NULL OR ci.nome = %s)
-        AND (%s IS NULL OR c.escolaridade = %s)
-        AND (%s IS NULL OR c.vaga_encaminhada = %s)
-        AND (%s IS NULL OR c.tem_ctps = %s)
-        AND (%s IS NULL OR c.servico = %s);
+            SELECT * FROM filtrar_curriculos(
+                %(nome)s, %(cidade)s, %(escolaridade)s, %(cargo)s, 
+                %(vaga_encaminhada)s, %(tem_ctps)s, %(servico)s, 
+                %(idade_min)s, %(idade_max)s, %(experiencia_min)s, 
+                %(sexo)s, %(cpf)s, %(limite)s, %(offset)s
+            );
         """
-        params = (
-            filtros.get('nome'), f"%{filtros.get('nome', '')}%" if filtros.get('nome') else None,
-            filtros.get('cidade'), filtros.get('cidade'),
-            filtros.get('escolaridade'), filtros.get('escolaridade'),
-            filtros.get('vaga_encaminhada'), filtros.get('vaga_encaminhada'),
-            filtros.get('tem_ctps'), filtros.get('tem_ctps'),
-            filtros.get('servico'), filtros.get('servico')
-        )
-        try:
-            return self.db.execute_query(query, params, fetch_all=True)
-        except Exception as e:
-            print(f"Erro ao buscar currículos: {e}")
-            return []
+        params = {
+            "nome": filtros.get("nome"),
+            "cidade": filtros.get("cidade"),
+            "escolaridade": filtros.get("escolaridade"),
+            "cargo": filtros.get("cargo"),
+            "vaga_encaminhada": filtros.get("vaga_encaminhada"),
+            "tem_ctps": filtros.get("tem_ctps"),
+            "servico": filtros.get("servico"),
+            "idade_min": filtros.get("idade_min"),
+            "idade_max": filtros.get("idade_max"),
+            "experiencia_min": filtros.get("experiencia_min"),
+            "sexo": filtros.get("sexo"),
+            "cpf": filtros.get("cpf"),
+            "limite": limite,
+            "offset": offset,
+        }
+        return self.db.execute_query(query, params, fetch_all=True)
 
     def get_curriculo_by_id(self, curriculo_id):
         """
-        Busca um currículo pelo ID, incluindo experiências associadas.
+        Busca um único currículo pelo ID, incluindo experiências associadas.
         """
         query = """
         SELECT c.id AS curriculo_id, c.nome, c.cpf, c.sexo, c.data_nascimento, ci.nome AS cidade, 
@@ -168,10 +165,12 @@ class CurriculoModel:
         WHERE c.id = %s;
         """
         try:
-            return self.db.execute_query(query, (curriculo_id,), fetch_all=True)
+            # Alterar para fetch_one
+            return self.db.execute_query(query, (curriculo_id,), fetch_one=True)
         except Exception as e:
             print(f"Erro ao buscar currículo por ID: {e}")
-            return []
+            return None
+
 
     def update_curriculo(self, curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico):
         """
@@ -247,12 +246,12 @@ class CurriculoModel:
             # Insere as experiências, se houver
             if experiencias:
                 query_experiencia = """
-                INSERT INTO experiencia (curriculo_id, cargo, anos, meses, tem_ctps)
-                VALUES (%s, %s, %s, %s, %s);
+                INSERT INTO experiencias (id_curriculo, cargo, anos_experiencia, meses_experiencia)
+                VALUES (%s, %s, %s, %s);
                 """
                 for experiencia in experiencias:
-                    cargo, anos, meses, tem_ctps = experiencia
-                    self.db.execute_query(query_experiencia, (curriculo_id, cargo, anos, meses, tem_ctps))
+                    cargo, anos, meses = experiencia
+                    self.db.execute_query(query_experiencia, (curriculo_id, cargo, anos, meses))
 
             return curriculo_id
         except Exception as e:

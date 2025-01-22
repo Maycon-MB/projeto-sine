@@ -1,10 +1,8 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QSpinBox, QPushButton, QComboBox, QMessageBox
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QSpinBox, QComboBox, QMessageBox, QPushButton, QDateEdit
 )
-from PySide6.QtCore import Qt, QEvent
-from PySide6.QtGui import QKeyEvent
+from PySide6.QtCore import Qt, QDate
 from models.curriculo_model import CurriculoModel
-
 
 class EditDialog(QDialog):
     def __init__(self, curriculo_model, curriculo_id, parent=None):
@@ -21,41 +19,53 @@ class EditDialog(QDialog):
 
         # Campos para edição
         self.nome_input = QLineEdit()
-        self.nome_input.textChanged.connect(lambda text: self.nome_input.setText(text.upper()))
-        self.idade_input = QSpinBox()
-        self.idade_input.setRange(0, 120)
+        self.cpf_input = QLineEdit()
+        self.sexo_input = QComboBox()
+        self.sexo_input.addItems(["MASCULINO", "FEMININO"])
+        self.data_nascimento_input = QDateEdit(calendarPopup=True)
+        self.data_nascimento_input.setDisplayFormat("dd/MM/yyyy")
         self.telefone_input = QLineEdit()
-        self.telefone_input.textChanged.connect(lambda text: self.telefone_input.setText(text.upper()))
+        self.telefone_extra_input = QLineEdit()
+        self.cidade_input = QComboBox()
         self.escolaridade_input = QComboBox()
         self.escolaridade_input.addItems([
             "ENSINO FUNDAMENTAL", "ENSINO MÉDIO INCOMPLETO", "ENSINO MÉDIO COMPLETO",
             "ENSINO SUPERIOR INCOMPLETO", "ENSINO SUPERIOR COMPLETO", "PÓS-GRADUAÇÃO/MBA",
             "MESTRADO", "DOUTORADO"
         ])
+        self.tem_ctps_input = QComboBox()
+        self.tem_ctps_input.addItems(["SIM", "NÃO"])
+        self.vaga_encaminhada_input = QComboBox()
+        self.vaga_encaminhada_input.addItems(["SIM", "NÃO"])
+        self.servico_input = QComboBox()
+        self.servico_input.addItems(["SINE", "MANUAL"])
         self.cargo_input = QLineEdit()
-        self.cargo_input.textChanged.connect(lambda text: self.cargo_input.setText(text.upper()))
         self.anos_experiencia_input = QSpinBox()
         self.anos_experiencia_input.setRange(0, 50)
-        
-        # Novo campo: Status
-        self.status_input = QComboBox()
-        self.status_input.addItems(["DISPONÍVEL", "EMPREGRADO", "NÃO DISPONÍVEL"])
+        self.meses_experiencia_input = QSpinBox()
+        self.meses_experiencia_input.setRange(0, 11)
 
-        # Adicionando os campos
-        self.layout().addWidget(QLabel("NOME:"))
-        self.layout().addWidget(self.nome_input)
-        self.layout().addWidget(QLabel("IDADE:"))
-        self.layout().addWidget(self.idade_input)
-        self.layout().addWidget(QLabel("TELEFONE:"))
-        self.layout().addWidget(self.telefone_input)
-        self.layout().addWidget(QLabel("ESCOLARIDADE:"))
-        self.layout().addWidget(self.escolaridade_input)
-        self.layout().addWidget(QLabel("CARGO:"))
-        self.layout().addWidget(self.cargo_input)
-        self.layout().addWidget(QLabel("ANOS DE EXPERIÊNCIA:"))
-        self.layout().addWidget(self.anos_experiencia_input)
-        self.layout().addWidget(QLabel("STATUS:"))
-        self.layout().addWidget(self.status_input)
+        # Adicionando campos à interface
+        fields = [
+            ("NOME", self.nome_input),
+            ("CPF", self.cpf_input),
+            ("SEXO", self.sexo_input),
+            ("DATA DE NASCIMENTO", self.data_nascimento_input),
+            ("TELEFONE", self.telefone_input),
+            ("TELEFONE EXTRA", self.telefone_extra_input),
+            ("CIDADE", self.cidade_input),
+            ("ESCOLARIDADE", self.escolaridade_input),
+            ("TEM CTPS", self.tem_ctps_input),
+            ("VAGA ENCAMINHADA", self.vaga_encaminhada_input),
+            ("SERVIÇO", self.servico_input),
+            ("CARGO", self.cargo_input),
+            ("ANOS DE EXPERIÊNCIA", self.anos_experiencia_input),
+            ("MESES DE EXPERIÊNCIA", self.meses_experiencia_input)
+        ]
+
+        for label, widget in fields:
+            self.layout().addWidget(QLabel(label))
+            self.layout().addWidget(widget)
 
         # Botões
         button_layout = QHBoxLayout()
@@ -68,42 +78,38 @@ class EditDialog(QDialog):
         button_layout.addWidget(self.cancel_button)
         self.layout().addLayout(button_layout)
 
-        # Ativar transição com Enter
-        self.configurar_transicao_enter([
-            self.nome_input, self.idade_input, self.telefone_input,
-            self.escolaridade_input, self.cargo_input, self.anos_experiencia_input, self.status_input
-        ])
-
-    def configurar_transicao_enter(self, widgets):
-        for i, widget in enumerate(widgets):
-            widget.setProperty("index", i)
-            widget.installEventFilter(self)
-
-    def eventFilter(self, source, event):
-        if event.type() == QEvent.KeyPress and isinstance(event, QKeyEvent):
-            if event.key() in (Qt.Key_Return, Qt.Key_Enter):
-                current_index = source.property("index")
-                if current_index is not None:
-                    next_index = current_index + 1
-                    widgets = source.parentWidget().findChildren(QLineEdit) + source.parentWidget().findChildren(QComboBox)
-                    if next_index < len(widgets):
-                        widgets[next_index].setFocus()
-                        return True
-        return super().eventFilter(source, event)
-
     def load_curriculo_data(self):
+        """
+        Carrega os dados do currículo do banco de dados.
+        """
         try:
             curriculo = self.curriculo_model.get_curriculo_by_id(self.curriculo_id)
             experiencias = self.curriculo_model.fetch_experiencias(self.curriculo_id)
+
             if curriculo:
                 self.nome_input.setText(curriculo.get("nome", ""))
-                self.idade_input.setValue(curriculo.get("idade", 0))
+                self.cpf_input.setText(curriculo.get("cpf", ""))
+                self.sexo_input.setCurrentText(curriculo.get("sexo", ""))
+                
+                # Verificando se a data de nascimento é uma string válida
+                data_nascimento_str = curriculo.get("data_nascimento", "")
+                if isinstance(data_nascimento_str, str) and data_nascimento_str:
+                    self.data_nascimento_input.setDate(QDate.fromString(data_nascimento_str, "yyyy-MM-dd"))
+                else:
+                    self.data_nascimento_input.clear()  # Limpa o campo se não for uma data válida
+
                 self.telefone_input.setText(curriculo.get("telefone", ""))
+                self.telefone_extra_input.setText(curriculo.get("telefone_extra", ""))
+                self.cidade_input.addItem(curriculo.get("cidade", ""))
                 self.escolaridade_input.setCurrentText(curriculo.get("escolaridade", ""))
-                self.status_input.setCurrentText(curriculo.get("status", ""))
+                self.tem_ctps_input.setCurrentText("SIM" if curriculo.get("tem_ctps") else "NÃO")
+                self.vaga_encaminhada_input.setCurrentText("SIM" if curriculo.get("vaga_encaminhada") else "NÃO")
+                self.servico_input.setCurrentText(curriculo.get("servico", ""))
+
                 if experiencias:
                     self.cargo_input.setText(experiencias[0].get("cargo", ""))
                     self.anos_experiencia_input.setValue(experiencias[0].get("anos_experiencia", 0))
+                    self.meses_experiencia_input.setValue(experiencias[0].get("meses_experiencia", 0))
             else:
                 QMessageBox.warning(self, "AVISO", "CURRÍCULO NÃO ENCONTRADO.")
                 self.reject()
@@ -112,15 +118,25 @@ class EditDialog(QDialog):
             self.reject()
 
     def save_changes(self):
-        nome = self.nome_input.text().strip().upper()
-        idade = self.idade_input.value()
-        telefone = self.telefone_input.text().strip().upper()
-        escolaridade = self.escolaridade_input.currentText().upper()
-        cargo = self.cargo_input.text().strip().upper()
+        """
+        Salva as alterações no banco de dados.
+        """
+        nome = self.nome_input.text().strip()
+        cpf = self.cpf_input.text().strip()
+        sexo = self.sexo_input.currentText()
+        data_nascimento = self.data_nascimento_input.date().toString("yyyy-MM-dd")
+        telefone = self.telefone_input.text().strip()
+        telefone_extra = self.telefone_extra_input.text().strip()
+        cidade = self.cidade_input.currentText()
+        escolaridade = self.escolaridade_input.currentText()
+        tem_ctps = self.tem_ctps_input.currentText() == "SIM"
+        vaga_encaminhada = self.vaga_encaminhada_input.currentText() == "SIM"
+        servico = self.servico_input.currentText()
+        cargo = self.cargo_input.text().strip()
         anos_experiencia = self.anos_experiencia_input.value()
-        status = self.status_input.currentText().upper()
+        meses_experiencia = self.meses_experiencia_input.value()
 
-        if not nome or not telefone or not escolaridade or not cargo or not status:
+        if not nome or not cpf or not telefone or not cidade:
             QMessageBox.warning(self, "AVISO", "TODOS OS CAMPOS DEVEM SER PREENCHIDOS.")
             return
 
@@ -131,11 +147,13 @@ class EditDialog(QDialog):
 
         if confirmacao == QMessageBox.Yes:
             try:
+                cidade_id = self.curriculo_model.obter_cidade_id(cidade)
                 self.curriculo_model.update_curriculo(
-                    self.curriculo_id, nome, idade, telefone, escolaridade, status
+                    self.curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id,
+                    telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico
                 )
                 self.curriculo_model.insert_experiencias(
-                    self.curriculo_id, [(cargo, anos_experiencia)]
+                    self.curriculo_id, [(cargo, anos_experiencia, meses_experiencia)]
                 )
                 QMessageBox.information(self, "SUCESSO", "CURRÍCULO ATUALIZADO COM SUCESSO!")
                 self.accept()

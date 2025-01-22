@@ -40,7 +40,7 @@ class CadastroWidget(QWidget):
         
         self.sexo_input = self.create_combo_box("SEXO:", ["MASCULINO", "FEMININO"], form_layout, 2)
 
-        self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")
+        self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")  # Manter a máscara de data
 
         try:
             cidades_raw = self.curriculo_model.listar_cidades()
@@ -60,7 +60,7 @@ class CadastroWidget(QWidget):
             [
                 "ENSINO FUNDAMENTAL INCOMPLETO",
                 "ENSINO FUNDAMENTAL COMPLETO",
-                "EENSINO MÉDIO INCOMPLETO",
+                "ENSINO MÉDIO INCOMPLETO",
                 "ENSINO MÉDIO COMPLETO",
                 "ENSINO SUPERIOR INCOMPLETO",
                 "ENSINO SUPERIOR COMPLETO",
@@ -112,6 +112,9 @@ class CadastroWidget(QWidget):
         line_edit.setPlaceholderText(placeholder)
         line_edit.setStyleSheet("font-size: 16px; height: 30px; text-transform: uppercase;")
         line_edit.installEventFilter(self)
+
+        # Converte automaticamente o texto para maiúsculo enquanto o usuário digita
+        line_edit.textChanged.connect(lambda text: line_edit.setText(text.upper()))
 
         # Armazena a máscara, mas só aplica ao sair do campo
         if mask:
@@ -196,6 +199,9 @@ class CadastroWidget(QWidget):
         cargo_input.setPlaceholderText("CARGO")
         cargo_input.setStyleSheet("font-size: 16px; height: 30px;")
 
+        # Converte o texto para maiúsculo enquanto o usuário digita
+        cargo_input.textChanged.connect(lambda text: cargo_input.setText(text.upper()))
+
         anos_input = QSpinBox()
         anos_input.setRange(0, 50)
         anos_input.setSuffix(" ANO(S)")
@@ -233,7 +239,6 @@ class CadastroWidget(QWidget):
         # Atualizar ordem de tabulação
         self.configure_tab_order()
 
-
     def remove_experiencia(self, layout):
         for i in reversed(range(layout.count())):
             widget = layout.itemAt(i).widget()
@@ -252,16 +257,20 @@ class CadastroWidget(QWidget):
 
 
     def cadastrar_dados(self):
+        """
+        Coleta os dados do formulário e cadastra um novo currículo.
+        """
         # Coleta os dados do formulário
         cpf = self.cpf_input.text().strip()
-        nome = self.nome_input.text().strip()
-        sexo = self.sexo_input.currentText()
+        nome = self.nome_input.text().strip().upper()
+        sexo = self.sexo_input.currentText().upper()
         data_nascimento = self.data_nascimento_input.text().strip()
-        cidade_nome = self.cidade_input.currentText()
+        cidade_nome = self.cidade_input.currentText().upper()
         telefone = self.telefone_input.text().strip()
         telefone_extra = self.telefone_extra_input.text().strip()
-        escolaridade = self.escolaridade_input.currentText()
+        escolaridade = self.escolaridade_input.currentText().upper()
         vaga_encaminhada = self.vaga_encaminhada_input.isChecked()
+        servico = self.servico_input.currentText().upper()
 
         experiencias = []
         for i in range(self.experiencias_layout.count()):
@@ -269,9 +278,8 @@ class CadastroWidget(QWidget):
             cargo = layout.itemAt(1).widget().text().strip()
             anos = layout.itemAt(3).widget().value()
             meses = layout.itemAt(5).widget().value()
-            tem_ctps = layout.itemAt(6).widget().isChecked()
             if cargo:
-                experiencias.append((cargo, anos, meses, tem_ctps))
+                experiencias.append((cargo, anos, meses))
 
         # Valida os campos obrigatórios
         if not cpf or not nome or not telefone or not escolaridade or not cidade_nome:
@@ -279,7 +287,7 @@ class CadastroWidget(QWidget):
             return
 
         # Validações adicionais
-        cpf_sem_formatacao = re.sub(r"\D", "", cpf)  # Remove tudo que não é número
+        cpf_sem_formatacao = re.sub(r"\D", "", cpf)
         if len(cpf_sem_formatacao) != 11:
             QMessageBox.warning(self, "Erro", "CPF inválido. Deve conter exatamente 11 números.")
             return
@@ -296,7 +304,7 @@ class CadastroWidget(QWidget):
             QMessageBox.warning(self, "Erro", "Data de nascimento inválida. Use o formato dd/mm/aaaa.")
             return
 
-        # Obtem o ID da cidade (ajustar lógica conforme seu banco)
+        # Obtem o ID da cidade
         cidade_id = self.curriculo_model.obter_cidade_id(cidade_nome)
         if not cidade_id:
             QMessageBox.warning(self, "Erro", "Cidade inválida.")
@@ -319,7 +327,8 @@ class CadastroWidget(QWidget):
                 escolaridade=escolaridade,
                 vaga_encaminhada=vaga_encaminhada,
                 tem_ctps=False,  # Ajustar se necessário
-                experiencias=experiencias
+                experiencias=experiencias,
+                servico=servico
             )
 
             QMessageBox.information(self, "Sucesso", "Currículo cadastrado com sucesso.")
@@ -331,13 +340,13 @@ class CadastroWidget(QWidget):
         self.cpf_input.clear()
         self.nome_input.clear()
         self.sexo_input.setCurrentIndex(0)
-        self.data_nascimento_input.setDate(QDate.currentDate())
+        self.data_nascimento_input.clear()  # Limpa o campo de data
         self.cidade_input.setCurrentIndex(0)
         self.telefone_input.clear()
         self.telefone_extra_input.clear()
         self.escolaridade_input.setCurrentIndex(0)
         self.servico_input.setCurrentIndex(0)
-        self.vaga_encaminhada_input.setCurrentIndex(0)
+        self.vaga_encaminhada_input.setChecked(False)
         while self.experiencias_layout.count():
             layout = self.experiencias_layout.takeAt(0).layout()
             self.remove_experiencia(layout)
