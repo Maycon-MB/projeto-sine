@@ -260,6 +260,74 @@ LEFT JOIN
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
 
+CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
+    p_nome TEXT DEFAULT NULL,
+    p_cidade TEXT DEFAULT NULL,
+    p_escolaridade TEXT DEFAULT NULL,
+    p_cargo TEXT DEFAULT NULL,
+    p_vaga_encaminhada BOOLEAN DEFAULT NULL,
+    p_tem_ctps BOOLEAN DEFAULT NULL,
+    p_servico TEXT DEFAULT NULL,
+    p_idade_min INTEGER DEFAULT NULL,
+    p_idade_max INTEGER DEFAULT NULL,
+    p_experiencia_min INTEGER DEFAULT NULL,
+    p_sexo TEXT DEFAULT NULL,
+    p_cpf TEXT DEFAULT NULL,
+    p_limite INTEGER DEFAULT 10,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    curriculo_id INTEGER,
+    nome TEXT,
+    idade INTEGER,
+    telefone TEXT,
+    telefone_extra TEXT,
+    cidade TEXT,
+    escolaridade TEXT,
+    tem_ctps TEXT,
+    vaga_encaminhada TEXT,
+    cargo TEXT,
+    anos_experiencia INTEGER,
+    meses_experiencia INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id AS curriculo_id,
+        c.nome::TEXT, 
+        FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT AS idade,
+        c.telefone::TEXT,  
+        c.telefone_extra::TEXT,  
+        ci.nome::TEXT AS cidade,  
+        c.escolaridade::TEXT,  
+        CASE WHEN c.tem_ctps THEN 'Sim' ELSE 'Não' END::TEXT AS tem_ctps,  
+        CASE WHEN c.vaga_encaminhada THEN 'Sim' ELSE 'Não' END::TEXT AS vaga_encaminhada,  
+        e.cargo::TEXT,  
+        e.anos_experiencia,
+        e.meses_experiencia
+    FROM 
+        curriculo c
+    LEFT JOIN 
+        experiencias e ON c.id = e.id_curriculo
+    LEFT JOIN 
+        cidades ci ON c.cidade_id = ci.id
+    WHERE 
+        (p_nome IS NULL OR c.nome ILIKE '%' || p_nome || '%') AND
+        (p_cidade IS NULL OR ci.nome ILIKE '%' || p_cidade || '%') AND
+        (p_escolaridade IS NULL OR c.escolaridade = p_escolaridade) AND
+        (p_cargo IS NULL OR e.cargo ILIKE '%' || p_cargo || '%') AND
+        (p_vaga_encaminhada IS NULL OR c.vaga_encaminhada = p_vaga_encaminhada) AND
+        (p_tem_ctps IS NULL OR c.tem_ctps = p_tem_ctps) AND
+        (p_servico IS NULL OR c.servico = p_servico) AND
+        (p_idade_min IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT >= p_idade_min) AND
+        (p_idade_max IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT <= p_idade_max) AND
+        (p_experiencia_min IS NULL OR e.anos_experiencia >= p_experiencia_min) AND
+        (p_sexo IS NULL OR c.sexo = p_sexo) AND
+        (p_cpf IS NULL OR c.cpf = p_cpf)  -- Filtro de CPF
+    LIMIT p_limite OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Nova tabela: notificacoes
 CREATE TABLE public.notificacoes (
     id SERIAL PRIMARY KEY,
