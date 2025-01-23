@@ -241,20 +241,16 @@ class ConsultaWidget(QWidget):
                 background-color: #0056A1;
             }
         """
-
+    
     def search_curriculos(self):
         filtros = {
             "nome": self.nome_input.text().strip() or None,
             "cpf": self.cpf_input.text().strip() or None,
             "sexo": self.sexo_input.currentText() or None,
             "cidade": self.cidade_input.currentText() or None,
-            "idade_min": self.idade_min_input.value(),
-            "idade_max": self.idade_max_input.value(),
+            "idade_min": self.idade_min_input.value() or None,
+            "idade_max": self.idade_max_input.value() or None,
             "escolaridade": self.escolaridade_input.currentText() or None,
-            "anos_experiencia_min": self.experiencia_anos_min.value(),
-            "anos_experiencia_max": self.experiencia_anos_max.value(),
-            "meses_experiencia_min": self.experiencia_meses_min.value(),
-            "meses_experiencia_max": self.experiencia_meses_max.value(),
             "telefone_extra": self.telefone_extra_input.text().strip() or None,
             "servico": self.servico_input.currentText() or None,
             "vaga_encaminhada": self.vaga_encaminhada_input.currentText(),
@@ -271,6 +267,14 @@ class ConsultaWidget(QWidget):
             filtros["idade_min"] = None
         if filtros["idade_max"] == 0:
             filtros["idade_max"] = None
+
+        # Experiência mínima e máxima em meses
+        experiencia_min_meses = (self.experiencia_anos_min.value() * 12) + self.experiencia_meses_min.value()
+        experiencia_max_meses = (self.experiencia_anos_max.value() * 12) + self.experiencia_meses_max.value()
+
+        # Se os valores forem padrão (0), definir como None
+        filtros["experiencia_min"] = experiencia_min_meses if experiencia_min_meses > 0 else None
+        filtros["experiencia_max"] = experiencia_max_meses if experiencia_max_meses > 0 else None
 
         try:
             # Consultar total de resultados sem paginação
@@ -349,6 +353,9 @@ class ConsultaWidget(QWidget):
             self.search_curriculos()
 
     def clear_filters(self):
+        """
+        Limpa todos os filtros e redefine para os valores padrão.
+        """
         self.nome_input.clear()
         self.cpf_input.clear()
         self.sexo_input.setCurrentIndex(0)
@@ -361,4 +368,6 @@ class ConsultaWidget(QWidget):
         self.telefone_extra_input.clear()
         self.servico_input.setCurrentIndex(0)
         self.vaga_encaminhada_input.setCurrentIndex(0)
+        self.idade_min_input.setValue(0)  # Corrigir: Resetar filtro de idade mínima
+        self.idade_max_input.setValue(0)  # Corrigir: Resetar filtro de idade máxima
         self.search_curriculos()

@@ -129,7 +129,7 @@ class CurriculoModel:
             SELECT * FROM filtrar_curriculos(
                 %(nome)s, %(cidade)s, %(escolaridade)s, %(cargo)s, 
                 %(vaga_encaminhada)s, %(tem_ctps)s, %(servico)s, 
-                %(idade_min)s, %(idade_max)s, %(experiencia_min)s, 
+                %(idade_min)s, %(idade_max)s, %(experiencia_min)s, %(experiencia_max)s,
                 %(sexo)s, %(cpf)s, %(limite)s, %(offset)s
             );
         """
@@ -143,7 +143,8 @@ class CurriculoModel:
             "servico": filtros.get("servico"),
             "idade_min": filtros.get("idade_min"),
             "idade_max": filtros.get("idade_max"),
-            "experiencia_min": filtros.get("experiencia_min"),
+            "experiencia_min": filtros.get("experiencia_min"),  # Passar experiência mínima
+            "experiencia_max": filtros.get("experiencia_max"),  # Passar experiência máxima
             "sexo": filtros.get("sexo"),
             "cpf": filtros.get("cpf"),
             "limite": limite,
@@ -260,11 +261,15 @@ class CurriculoModel:
 
     def insert_experiencias(self, id_curriculo, experiencias):
         """
-        Insere experiências profissionais associadas a um currículo.
+        Insere ou atualiza experiências profissionais associadas a um currículo.
         """
         query = """
         INSERT INTO experiencias (id_curriculo, cargo, anos_experiencia, meses_experiencia)
-        VALUES (%s, %s, %s, %s);
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (id_curriculo, cargo)
+        DO UPDATE SET
+            anos_experiencia = EXCLUDED.anos_experiencia,
+            meses_experiencia = EXCLUDED.meses_experiencia;
         """
         for cargo, anos_experiencia, meses_experiencia in experiencias:
             if not cargo or anos_experiencia < 0 or meses_experiencia < 0 or meses_experiencia >= 12:
@@ -276,7 +281,7 @@ class CurriculoModel:
         Busca as experiências profissionais associadas a um currículo.
         """
         query = """
-        SELECT cargo, anos_experiencia
+        SELECT cargo, anos_experiencia, meses_experiencia
         FROM experiencias
         WHERE id_curriculo = %s;
         """
@@ -285,3 +290,4 @@ class CurriculoModel:
         except Exception as e:
             print(f"Erro ao buscar experiências: {e}")
             return []
+

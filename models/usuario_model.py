@@ -39,8 +39,10 @@ class UsuarioModel:
             RETURNING id;
             """
             result = self.db.execute_query(query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
-            self.aprovacao_model.enviar_aprovacao(result['id'], cidade)  # Usa AprovacaoModel
-            self._registrar_log(result['id'], 'Cadastro de usuário')
+            
+            # Envia aprovação pendente para o admin/master
+            self.aprovacao_model.enviar_aprovacao(result['id'], cidade)
+            logging.info(f"Usuário cadastrado com ID: {result['id']}, aguardando aprovação.")
             return result['id']
         except Exception as e:
             logging.error(f"Erro ao cadastrar usuário: {e}")

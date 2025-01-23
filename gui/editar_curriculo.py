@@ -90,13 +90,13 @@ class EditDialog(QDialog):
                 self.nome_input.setText(curriculo.get("nome", ""))
                 self.cpf_input.setText(curriculo.get("cpf", ""))
                 self.sexo_input.setCurrentText(curriculo.get("sexo", ""))
-                
-                # Verificando se a data de nascimento é uma string válida
+
+                # Verificando se a data de nascimento é válida
                 data_nascimento_str = curriculo.get("data_nascimento", "")
                 if isinstance(data_nascimento_str, str) and data_nascimento_str:
                     self.data_nascimento_input.setDate(QDate.fromString(data_nascimento_str, "yyyy-MM-dd"))
                 else:
-                    self.data_nascimento_input.clear()  # Limpa o campo se não for uma data válida
+                    self.data_nascimento_input.clear()
 
                 self.telefone_input.setText(curriculo.get("telefone", ""))
                 self.telefone_extra_input.setText(curriculo.get("telefone_extra", ""))
@@ -109,7 +109,11 @@ class EditDialog(QDialog):
                 if experiencias:
                     self.cargo_input.setText(experiencias[0].get("cargo", ""))
                     self.anos_experiencia_input.setValue(experiencias[0].get("anos_experiencia", 0))
-                    self.meses_experiencia_input.setValue(experiencias[0].get("meses_experiencia", 0))
+                    self.meses_experiencia_input.setValue(experiencias[0].get("meses_experiencia", 0))  # Corrige aqui
+                else:
+                    self.cargo_input.clear()
+                    self.anos_experiencia_input.setValue(0)
+                    self.meses_experiencia_input.setValue(0)
             else:
                 QMessageBox.warning(self, "AVISO", "CURRÍCULO NÃO ENCONTRADO.")
                 self.reject()
@@ -136,6 +140,7 @@ class EditDialog(QDialog):
         anos_experiencia = self.anos_experiencia_input.value()
         meses_experiencia = self.meses_experiencia_input.value()
 
+        # Verifica se os campos obrigatórios estão preenchidos
         if not nome or not cpf or not telefone or not cidade:
             QMessageBox.warning(self, "AVISO", "TODOS OS CAMPOS DEVEM SER PREENCHIDOS.")
             return
@@ -147,14 +152,20 @@ class EditDialog(QDialog):
 
         if confirmacao == QMessageBox.Yes:
             try:
+                # Obtém o ID da cidade
                 cidade_id = self.curriculo_model.obter_cidade_id(cidade)
+                
+                # Atualiza os dados do currículo
                 self.curriculo_model.update_curriculo(
                     self.curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id,
                     telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico
                 )
+
+                # Atualiza as experiências (com limpeza e reinserção ou UPSERT)
                 self.curriculo_model.insert_experiencias(
                     self.curriculo_id, [(cargo, anos_experiencia, meses_experiencia)]
                 )
+
                 QMessageBox.information(self, "SUCESSO", "CURRÍCULO ATUALIZADO COM SUCESSO!")
                 self.accept()
             except Exception as e:

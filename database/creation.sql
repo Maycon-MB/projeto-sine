@@ -151,14 +151,15 @@ CREATE INDEX IF NOT EXISTS idx_curriculo_nome ON public.curriculo (nome);
 CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade ON public.curriculo (escolaridade);
 CREATE INDEX IF NOT EXISTS idx_curriculo_cidade ON public.curriculo (cidade_id);
 
--- Tabela: experiencias
+-- Tabela: experiencias (com restrição de unicidade)
 CREATE TABLE public.experiencias (
     id SERIAL PRIMARY KEY,
     id_curriculo INTEGER NOT NULL,
     cargo VARCHAR(255) NOT NULL,
     anos_experiencia INTEGER NOT NULL CHECK (anos_experiencia >= 0),
     meses_experiencia INTEGER NOT NULL CHECK (meses_experiencia >= 0 AND meses_experiencia < 12),
-    FOREIGN KEY (id_curriculo) REFERENCES public.curriculo (id) ON DELETE CASCADE
+    FOREIGN KEY (id_curriculo) REFERENCES public.curriculo (id) ON DELETE CASCADE,
+    CONSTRAINT unique_id_curriculo_cargo UNIQUE (id_curriculo, cargo) -- Garantia de não duplicação por currículo e cargo
 )
 TABLESPACE pg_default;
 
@@ -271,6 +272,7 @@ CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
     p_idade_min INTEGER DEFAULT NULL,
     p_idade_max INTEGER DEFAULT NULL,
     p_experiencia_min INTEGER DEFAULT NULL,
+    p_experiencia_max INTEGER DEFAULT NULL, -- Adicionar o parâmetro para experiência máxima
     p_sexo TEXT DEFAULT NULL,
     p_cpf TEXT DEFAULT NULL,
     p_limite INTEGER DEFAULT 10,
@@ -321,7 +323,10 @@ BEGIN
         (p_servico IS NULL OR c.servico = p_servico) AND
         (p_idade_min IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT >= p_idade_min) AND
         (p_idade_max IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT <= p_idade_max) AND
-        (p_experiencia_min IS NULL OR e.anos_experiencia >= p_experiencia_min) AND
+        (p_experiencia_min IS NULL OR 
+         ((e.anos_experiencia * 12) + e.meses_experiencia) >= p_experiencia_min) AND
+        (p_experiencia_max IS NULL OR 
+         ((e.anos_experiencia * 12) + e.meses_experiencia) <= p_experiencia_max) AND
         (p_sexo IS NULL OR c.sexo = p_sexo) AND
         (p_cpf IS NULL OR c.cpf = p_cpf)  -- Filtro de CPF
     LIMIT p_limite OFFSET p_offset;
