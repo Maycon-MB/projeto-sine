@@ -46,17 +46,28 @@ class AprovacaoModel:
         return self.db.execute_query(query, (status, status, page_size, offset), fetch_all=True)
 
     def atualizar_status_aprovacao(self, aprovacao_id, novo_status, usuario_id):
-        query = """
-            UPDATE aprovacoes
-            SET status_aprovacao = %s, atualizado_em = NOW()
-            WHERE id = %s;
-        """
-        log_query = """
-            INSERT INTO logs_auditoria (notificacao_id, usuario_id, acao)
-            VALUES (%s, %s, %s);
-        """
-        self.db.execute_query(query, (novo_status, aprovacao_id))
-        self.db.execute_query(log_query, (aprovacao_id, usuario_id, novo_status))
+        if novo_status not in ['aprovado', 'rejeitado']:
+            raise ValueError("Status inválido. Use 'aprovado' ou 'rejeitado'.")
+
+        try:
+            # Atualiza o status de aprovação
+            query = """
+                UPDATE aprovacoes
+                SET status_aprovacao = %s, atualizado_em = NOW()
+                WHERE id = %s;
+            """
+            self.db.execute_query(query, (novo_status, aprovacao_id))
+
+            # Registra a ação no logs_auditoria
+            log_query = """
+                INSERT INTO logs_auditoria (notificacao_id, usuario_id, acao)
+                VALUES (%s, %s, %s);
+            """
+            self.db.execute_query(log_query, (aprovacao_id, usuario_id, novo_status))
+            logging.info(f"Aprovação ID: {aprovacao_id} atualizada para '{novo_status}' por usuário ID: {usuario_id}.")
+        except Exception as e:
+            logging.error(f"Erro ao atualizar status de aprovação: {e}")
+            raise
 
     def aprovar_usuario(self, aprovacao_id):
         query = """

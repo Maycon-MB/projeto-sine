@@ -92,10 +92,12 @@ class TelaNotificacoes(QDialog):
                 # Botões de ação
                 btn_aprovar = QPushButton("✔")
                 btn_aprovar.setToolTip("Aprovar")
+                btn_aprovar.setEnabled(notificacao["status_aprovacao"] == "pendente")
                 btn_aprovar.clicked.connect(lambda _, id=notificacao["id"]: self.aprovar(id))
 
                 btn_rejeitar = QPushButton("✖")
                 btn_rejeitar.setToolTip("Rejeitar")
+                btn_rejeitar.setEnabled(notificacao["status_aprovacao"] == "pendente")
                 btn_rejeitar.clicked.connect(lambda _, id=notificacao["id"]: self.rejeitar(id))
 
                 self.tabela_notificacoes.setCellWidget(row, 5, self._criar_widget_acoes(btn_aprovar, btn_rejeitar))

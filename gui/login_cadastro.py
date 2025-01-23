@@ -21,6 +21,62 @@ class LoginCadastroDialog(QDialog):
         self.layout_principal.addWidget(self.tabs)
 
         self.setLayout(self.layout_principal)
+        self.apply_theme()
+
+    def apply_theme(self):
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #c2dafc; /* Azul acinzentado claro */
+            }
+            QLabel {
+                font-size: 14px;
+                color: #333333; /* Texto em cinza escuro */
+            }
+            QLineEdit {
+                background-color: #ffffff; /* Fundo branco */
+                border: 1px solid #b0c4de; /* Azul desaturado */
+                border-radius: 5px;
+                padding: 5px;
+                font-size: 14px;
+                color: #333333; /* Texto em cinza escuro */
+            }
+            QLineEdit:focus {
+                border: 2px solid #0078d7; /* Azul profissional no foco */
+            }
+            QPushButton {
+                background-color: #0078d7; /* Azul principal */
+                color: #ffffff; /* Texto branco */
+                font-size: 14px;
+                border: none;
+                border-radius: 5px;
+                padding: 8px;
+            }
+            QPushButton:hover {
+                background-color: #005499; /* Azul mais escuro no hover */
+            }
+            QPushButton:disabled {
+                background-color: #c0c0c0; /* Cinza claro para desabilitado */
+                color: #808080; /* Texto em cinza médio */
+            }
+            QTabWidget::pane {
+                border: 1px solid #b0c4de; /* Azul desaturado */
+            }
+            QTabBar::tab {
+                background: #f4f6f9; /* Fundo claro para abas inativas */
+                color: #0078d7; /* Texto em azul profissional */
+                padding: 8px;
+                border: 1px solid #b0c4de;
+                border-top-left-radius: 5px;
+                border-top-right-radius: 5px;
+            }
+            QTabBar::tab:selected {
+                background: #0078d7; /* Fundo azul para aba ativa */
+                color: #ffffff; /* Texto branco */
+            }
+            QTabBar::tab:hover {
+                background: #005499; /* Fundo mais escuro no hover */
+            }
+        """)
 
     def criar_tab_login(self):
         tab_login = QWidget()
@@ -30,7 +86,7 @@ class LoginCadastroDialog(QDialog):
         self.login_usuario_input.setPlaceholderText("Usuário ou E-mail")
         self.login_usuario_input.editingFinished.connect(lambda: self.login_usuario_input.setText(self.login_usuario_input.text().upper()))
 
-        self.login_senha_input = self.criar_password_field("Senha")
+        self.login_senha_input, toggle_btn = self.criar_password_field("Senha")
 
         btn_login = QPushButton("Login")
         btn_login.clicked.connect(self.handle_login)
@@ -43,10 +99,11 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(self.login_usuario_input)
         layout.addWidget(QLabel("Senha:"))
         layout.addWidget(self.login_senha_input)
+        layout.addWidget(toggle_btn, alignment=Qt.AlignRight)
         layout.addWidget(btn_login)
         layout.addWidget(btn_recuperar_senha, alignment=Qt.AlignRight)
 
-        self.configurar_transicao_enter([self.login_usuario_input, self.login_senha_input.findChild(QLineEdit)])
+        self.configurar_transicao_enter([self.login_usuario_input, self.login_senha_input])
 
         tab_login.setLayout(layout)
         return tab_login
@@ -70,13 +127,9 @@ class LoginCadastroDialog(QDialog):
         self.cadastro_email_input = QLineEdit()
         self.cadastro_email_input.setPlaceholderText("E-mail")
 
-        self.cadastro_password_input = QLineEdit()
-        self.cadastro_password_input.setPlaceholderText("Senha")
-        self.cadastro_password_input.setEchoMode(QLineEdit.Password)
+        self.cadastro_password_input, toggle_password_btn = self.criar_password_field("Senha")
 
-        self.confirm_password_input = QLineEdit()
-        self.confirm_password_input.setPlaceholderText("Confirme a senha")
-        self.confirm_password_input.setEchoMode(QLineEdit.Password)
+        self.confirm_password_input, toggle_confirm_btn = self.criar_password_field("Confirme a senha")
 
         btn_cadastrar = QPushButton("Cadastrar")
         btn_cadastrar.clicked.connect(self.handle_cadastro)
@@ -86,7 +139,9 @@ class LoginCadastroDialog(QDialog):
         layout.addRow("Cidade:", self.cidade_input)
         layout.addRow("E-mail:", self.cadastro_email_input)
         layout.addRow("Senha:", self.cadastro_password_input)
+        layout.addRow("", toggle_password_btn)
         layout.addRow("Confirme a Senha:", self.confirm_password_input)
+        layout.addRow("", toggle_confirm_btn)
         layout.addRow(btn_cadastrar)
 
         self.configurar_transicao_enter([
@@ -125,7 +180,7 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(password_input)
         layout.addWidget(btn_toggle)
         container.setLayout(layout)
-        return container
+        return password_input, container
 
     def configurar_transicao_enter(self, widgets):
         """Configura a navegação entre widgets usando Enter."""
@@ -148,13 +203,12 @@ class LoginCadastroDialog(QDialog):
                         return True
         return super().eventFilter(source, event)
 
-
     def is_valid_email(self, email):
         return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
 
     def handle_login(self):
         usuario = self.login_usuario_input.text().strip()
-        senha = self.login_senha_input.findChild(QLineEdit).text()
+        senha = self.login_senha_input.text()
 
         if not usuario or not senha:
             QMessageBox.warning(self, "Erro", "Por favor, preencha todos os campos.")
@@ -176,8 +230,8 @@ class LoginCadastroDialog(QDialog):
         usuario = self.usuario_input.text().strip()
         cidade = self.cidade_input.text().strip()
         email = self.cadastro_email_input.text().strip()
-        senha = self.cadastro_password_input.text()  # Remover .findChild(QLineEdit) e acessar diretamente
-        confirmacao = self.confirm_password_input.text()  # Remover .findChild(QLineEdit) e acessar diretamente
+        senha = self.cadastro_password_input.text()
+        confirmacao = self.confirm_password_input.text()
 
         if not nome or not usuario or not cidade or not email or not senha:
             QMessageBox.warning(self, "Erro", "Todos os campos devem ser preenchidos.")

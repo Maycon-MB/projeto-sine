@@ -403,5 +403,10 @@ class CadastroWidget(QWidget):
         return super().eventFilter(source, event)
 
 
+    def showEvent(self, event):
+        """Coloca o foco no campo de Login quando a janela for exibida."""
+        self.cpf_input.setFocus()  # Foca no campo "Usuário ou E-mail"
+        super().showEvent(event)  # Chama o evento showEvent da classe base
+
 
 
