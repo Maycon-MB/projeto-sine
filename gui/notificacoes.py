@@ -127,7 +127,11 @@ class TelaNotificacoes(QDialog):
     def aprovar(self, aprovacao_id):
         if QMessageBox.question(self, "Confirmação", "Aprovar esta solicitação?") == QMessageBox.Yes:
             try:
-                self.model.atualizar_status_aprovacao(aprovacao_id, "aprovado")
+                # Obter o usuario_id relacionado à aprovacao_id
+                usuario_id = self._obter_usuario_id(aprovacao_id)
+                
+                # Passar o usuario_id para o método atualizar_status_aprovacao
+                self.model.atualizar_status_aprovacao(aprovacao_id, "aprovado", usuario_id)
                 QMessageBox.information(self, "Sucesso", "Solicitação aprovada!")
                 self.carregar_notificacoes()
             except Exception as e:
@@ -136,11 +140,23 @@ class TelaNotificacoes(QDialog):
     def rejeitar(self, aprovacao_id):
         if QMessageBox.question(self, "Confirmação", "Rejeitar esta solicitação?") == QMessageBox.Yes:
             try:
-                self.model.atualizar_status_aprovacao(aprovacao_id, "rejeitado")
+                # Obter o usuario_id relacionado à aprovacao_id
+                usuario_id = self._obter_usuario_id(aprovacao_id)
+                
+                # Passar o usuario_id para o método atualizar_status_aprovacao
+                self.model.atualizar_status_aprovacao(aprovacao_id, "rejeitado", usuario_id)
                 QMessageBox.information(self, "Sucesso", "Solicitação rejeitada!")
                 self.carregar_notificacoes()
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao rejeitar: {str(e)}")
+
+    def _obter_usuario_id(self, aprovacao_id):
+        """
+        Obtém o ID do usuário associado ao aprovacao_id.
+        """
+        # Aqui você pode usar o model para buscar o usuario_id relacionado à aprovação.
+        aprovacao = self.model.obter_aprovacao_por_id(aprovacao_id)
+        return aprovacao['usuario_id']  # Retorna o ID do usuário associado
 
     def pagina_anterior(self):
         if self.page > 1:
