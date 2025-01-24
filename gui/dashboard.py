@@ -4,11 +4,16 @@ from PySide6.QtGui import QFont, QIcon
 from PySide6.QtCore import QSize, Qt
 
 class DashboardWidget(QWidget):
-    def __init__(self, usuario_model, aprovacao_model, navigate_callback):
+    def __init__(self, usuario_model, aprovacao_model, navigate_callback, tipo_usuario=None, usuario_id=None, cidade_admin=None):
         super().__init__()
         self.usuario_model = usuario_model
         self.aprovacao_model = aprovacao_model
         self.navigate_callback = navigate_callback
+
+        # Guardando os novos parâmetros
+        self.tipo_usuario = tipo_usuario
+        self.usuario_id = usuario_id
+        self.cidade_admin = cidade_admin
 
         self.setup_ui()
 
@@ -25,8 +30,12 @@ class DashboardWidget(QWidget):
         indicators_layout = QHBoxLayout()
 
         total_curriculos = self._create_info_card("Total de Currículos", self.usuario_model.total_curriculos())
-        pendentes = self._create_info_card("Aprovações Pendentes", self.aprovacao_model.total_pendentes())
-        notificacoes = self._create_info_card("Notificações", self.aprovacao_model.total_notificacoes())
+        
+        # Passando o tipo_usuario ao método total_pendentes
+        pendentes = self._create_info_card("Aprovações Pendentes", self.aprovacao_model.total_pendentes(self.tipo_usuario))
+        
+        # Passando o usuario_id ao método total_notificacoes
+        notificacoes = self._create_info_card("Notificações", self.aprovacao_model.total_notificacoes(self.usuario_id))  
 
         indicators_layout.addWidget(total_curriculos)
         indicators_layout.addWidget(pendentes)

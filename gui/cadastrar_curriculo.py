@@ -255,7 +255,6 @@ class CadastroWidget(QWidget):
         else:
             raise ValueError("Cidade não encontrada.")
 
-
     def cadastrar_dados(self):
         """
         Coleta os dados do formulário e cadastra um novo currículo.

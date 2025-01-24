@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox, QTabWidget,
+    QDialog, QVBoxLayout, QLineEdit, QPushButton, QLabel, QMessageBox, QTabWidget, QComboBox,
     QWidget, QFormLayout, QHBoxLayout, QInputDialog
 )
 from PySide6.QtCore import Qt, QEvent
@@ -32,7 +32,7 @@ class LoginCadastroDialog(QDialog):
                 font-size: 14px;
                 color: #333333; /* Texto em cinza escuro */
             }
-            QLineEdit {
+            QLineEdit, QComboBox {
                 background-color: #ffffff; /* Fundo branco */
                 border: 1px solid #b0c4de; /* Azul desaturado */
                 border-radius: 5px;
@@ -40,7 +40,7 @@ class LoginCadastroDialog(QDialog):
                 font-size: 14px;
                 color: #333333; /* Texto em cinza escuro */
             }
-            QLineEdit:focus {
+            QLineEdit:focus, QComboBox:focus {
                 border: 2px solid #0078d7; /* Azul profissional no foco */
             }
             QPushButton {
@@ -84,11 +84,14 @@ class LoginCadastroDialog(QDialog):
 
         self.login_usuario_input = QLineEdit()
         self.login_usuario_input.setPlaceholderText("Usuário ou E-mail")
-        self.login_usuario_input.editingFinished.connect(lambda: self.login_usuario_input.setText(self.login_usuario_input.text().upper()))
+        self.login_usuario_input.editingFinished.connect(
+            lambda: self.login_usuario_input.setText(self.login_usuario_input.text().upper())
+        )
 
-        self.login_senha_input, toggle_btn = self.criar_password_field("Senha")
+        self.login_senha_input, password_container = self.criar_password_field("Senha")
 
         btn_login = QPushButton("Login")
+        btn_login.setObjectName("Login")  # Nome único para identificação
         btn_login.clicked.connect(self.handle_login)
 
         btn_recuperar_senha = QPushButton("Esqueceu a senha?")
@@ -98,12 +101,15 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(QLabel("Usuário ou E-mail:"))
         layout.addWidget(self.login_usuario_input)
         layout.addWidget(QLabel("Senha:"))
-        layout.addWidget(self.login_senha_input)
-        layout.addWidget(toggle_btn, alignment=Qt.AlignRight)
+        layout.addWidget(password_container)  # Substituído pelo container horizontal
         layout.addWidget(btn_login)
         layout.addWidget(btn_recuperar_senha, alignment=Qt.AlignRight)
 
-        self.configurar_transicao_enter([self.login_usuario_input, self.login_senha_input])
+        self.configurar_transicao_enter([
+            self.login_usuario_input,
+            self.login_senha_input,
+            btn_login,
+        ])
 
         tab_login.setLayout(layout)
         return tab_login
@@ -120,45 +126,57 @@ class LoginCadastroDialog(QDialog):
         self.usuario_input.setPlaceholderText("Usuário")
         self.usuario_input.editingFinished.connect(lambda: self.usuario_input.setText(self.usuario_input.text().upper()))
 
-        self.cidade_input = QLineEdit()
-        self.cidade_input.setPlaceholderText("Cidade")
-        self.cidade_input.editingFinished.connect(lambda: self.cidade_input.setText(self.cidade_input.text().upper()))
+        self.cidade_combobox = QComboBox()
+        self.cidade_combobox.setEditable(True)  # Permitir digitação
+        self.preencher_combo_cidades()
 
         self.cadastro_email_input = QLineEdit()
         self.cadastro_email_input.setPlaceholderText("E-mail")
 
-        self.cadastro_password_input, toggle_password_btn = self.criar_password_field("Senha")
-
-        self.confirm_password_input, toggle_confirm_btn = self.criar_password_field("Confirme a senha")
+        self.cadastro_password_input, password_container = self.criar_password_field("Senha")
+        self.confirm_password_input, confirm_password_container = self.criar_password_field("Confirme a senha")
 
         btn_cadastrar = QPushButton("Cadastrar")
+        btn_cadastrar.setObjectName("Cadastrar")  # Nome único para identificação
         btn_cadastrar.clicked.connect(self.handle_cadastro)
 
         layout.addRow("Nome:", self.nome_input)
         layout.addRow("Usuário:", self.usuario_input)
-        layout.addRow("Cidade:", self.cidade_input)
+        layout.addRow("Cidade:", self.cidade_combobox)
         layout.addRow("E-mail:", self.cadastro_email_input)
-        layout.addRow("Senha:", self.cadastro_password_input)
-        layout.addRow("", toggle_password_btn)
-        layout.addRow("Confirme a Senha:", self.confirm_password_input)
-        layout.addRow("", toggle_confirm_btn)
+        layout.addRow("Senha:", password_container)  # Substituído pelo container horizontal
+        layout.addRow("Confirme a Senha:", confirm_password_container)  # Substituído pelo container horizontal
         layout.addRow(btn_cadastrar)
 
         self.configurar_transicao_enter([
             self.nome_input,
             self.usuario_input,
-            self.cidade_input,
+            self.cidade_combobox,
             self.cadastro_email_input,
             self.cadastro_password_input,
-            self.confirm_password_input
+            self.confirm_password_input,
         ])
 
         tab_cadastro.setLayout(layout)
         return tab_cadastro
 
+    def preencher_combo_cidades(self):
+        """
+        Preenche o ComboBox com as cidades da tabela 'cidades'.
+        """
+        try:
+            cidades = self.usuario_model.listar_cidades()  # Nova função no modelo
+            self.cidade_combobox.addItem("")  # Placeholder inicial
+            for cidade in cidades:
+                self.cidade_combobox.addItem(cidade['nome'], cidade['id'])  # Adiciona com nome e ID
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao carregar cidades: {e}")
+
     def criar_password_field(self, placeholder):
+        """Cria um campo de senha com botão de mostrar/ocultar."""
         container = QWidget()
         layout = QHBoxLayout()
+        layout.setContentsMargins(0, 0, 0, 0)  # Remove margens extras
 
         password_input = QLineEdit()
         password_input.setPlaceholderText(placeholder)
@@ -168,6 +186,7 @@ class LoginCadastroDialog(QDialog):
         btn_toggle.setCheckable(True)
         btn_toggle.setMaximumWidth(30)
 
+        # Alternar visibilidade da senha
         def toggle_password():
             if btn_toggle.isChecked():
                 password_input.setEchoMode(QLineEdit.Normal)
@@ -177,6 +196,8 @@ class LoginCadastroDialog(QDialog):
                 btn_toggle.setText("👁")
 
         btn_toggle.clicked.connect(toggle_password)
+
+        # Adicionar o campo e o botão ao layout horizontal
         layout.addWidget(password_input)
         layout.addWidget(btn_toggle)
         container.setLayout(layout)
@@ -189,19 +210,49 @@ class LoginCadastroDialog(QDialog):
             widget.installEventFilter(self)  # Instala o filtro de eventos
 
     def eventFilter(self, source, event):
-        """Captura o evento Enter para alternar entre widgets."""
+        """Captura o evento Enter para alternar entre widgets e acionar o botão."""
         if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            if isinstance(source, QLineEdit):  # Verifica se o evento ocorreu em um QLineEdit
-                current_index = source.property("index")
-                if current_index is not None:
-                    # Calcula o próximo índice
-                    next_index = current_index + 1
-                    # Procura o próximo widget com base no índice
-                    widgets = source.parentWidget().findChildren(QLineEdit)
-                    if next_index < len(widgets):
-                        widgets[next_index].setFocus()
-                        return True
+            # Lista de widgets para o cadastro
+            widgets_cadastro = [
+                self.nome_input,
+                self.usuario_input,
+                self.cidade_combobox,
+                self.cadastro_email_input,
+                self.cadastro_password_input,
+                self.confirm_password_input,
+            ]
+
+            # Lista de widgets para o login
+            widgets_login = [
+                self.login_usuario_input,
+                self.login_senha_input,
+            ]
+
+            # Verifica a navegação na aba de cadastro
+            if source in widgets_cadastro:
+                current_index = widgets_cadastro.index(source)
+                next_index = current_index + 1
+                if next_index < len(widgets_cadastro):
+                    widgets_cadastro[next_index].setFocus()
+                else:
+                    self.findChild(QPushButton, "Cadastrar").click()
+                return True  # Evento tratado
+
+            # Verifica a navegação na aba de login
+            if source in widgets_login:
+                current_index = widgets_login.index(source)
+                next_index = current_index + 1
+                if next_index < len(widgets_login):
+                    widgets_login[next_index].setFocus()
+                else:
+                    self.findChild(QPushButton, "Login").click()
+                return True  # Evento tratado
         return super().eventFilter(source, event)
+    
+    def configurar_transicao_enter(self, widgets):
+        """Configura a navegação entre widgets usando Enter."""
+        for widget in widgets:
+            widget.installEventFilter(self)
 
     def is_valid_email(self, email):
         return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
@@ -215,10 +266,21 @@ class LoginCadastroDialog(QDialog):
             return
 
         try:
+            # Busca as informações do usuário pelo login (usuário ou email)
             usuario_info = self.usuario_model.buscar_usuario_por_login(usuario)
+
             if usuario_info and bcrypt.checkpw(senha.encode(), usuario_info['senha'].encode()):
                 QMessageBox.information(self, "Sucesso", "Login realizado com sucesso!")
-                self.usuario_logado = usuario_info  # ✅ Armazena o usuário logado
+
+                # Adiciona 'tipo_usuario' ao dicionário de usuário logado
+                self.usuario_logado = {
+                    'id': usuario_info['id'],
+                    'usuario': usuario_info['usuario'],
+                    'email': usuario_info['email'],
+                    'cidade_id': usuario_info['cidade_id'],
+                    'tipo_usuario': usuario_info['tipo_usuario'],  # Certifique-se de que este campo está no banco
+                }
+
                 self.accept()
             else:
                 QMessageBox.warning(self, "Erro", "Usuário ou senha inválidos.")
@@ -228,13 +290,17 @@ class LoginCadastroDialog(QDialog):
     def handle_cadastro(self):
         nome = self.nome_input.text().strip()
         usuario = self.usuario_input.text().strip()
-        cidade = self.cidade_input.text().strip()
+        cidade_id = self.cidade_combobox.currentData()  # Recupera o ID da cidade selecionada
         email = self.cadastro_email_input.text().strip()
         senha = self.cadastro_password_input.text()
         confirmacao = self.confirm_password_input.text()
 
-        if not nome or not usuario or not cidade or not email or not senha:
+        if not nome or not usuario or not cidade_id or not email or not senha:
             QMessageBox.warning(self, "Erro", "Todos os campos devem ser preenchidos.")
+            return
+
+        if cidade_id is None or cidade_id == "Selecione uma cidade":
+            QMessageBox.warning(self, "Erro", "Por favor, selecione uma cidade válida.")
             return
 
         if not self.is_valid_email(email):
@@ -250,7 +316,6 @@ class LoginCadastroDialog(QDialog):
             return
 
         try:
-            # Verificar duplicidade antes de cadastrar
             if self.usuario_model.verificar_email_existente(email):
                 QMessageBox.warning(self, "Erro", "E-mail já cadastrado.")
                 return
@@ -260,7 +325,7 @@ class LoginCadastroDialog(QDialog):
                 return
 
             senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade, "comum")
+            self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade_id, "comum")  # Passa cidade_id
             QMessageBox.information(self, "Cadastro", "Cadastro realizado com sucesso!")
             self.close()
         except Exception as e:
