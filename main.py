@@ -1,4 +1,4 @@
-import os
+import os, logging
 from pathlib import Path
 from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
@@ -126,10 +126,11 @@ class MainWindow(QMainWindow):
             font-weight: bold;
             position: absolute;
         """)
-        self.notification_count_label.move(self.notification_button.width() - 15, 0)  # Posição fixa relativa ao botão
+        self.notification_count_label.move(self.notification_button.width() - 20, 0)  # Posição fixa relativa ao botão
         self.notification_count_label.setVisible(False)  # Ocultar inicialmente
 
         self.top_bar_layout.addStretch()
+        self.top_bar_layout.addSpacing(10)  # Espaçamento extra antes do botão
         self.top_bar_layout.addWidget(self.notification_button)
 
         body_layout.addWidget(self.top_bar)
@@ -138,7 +139,14 @@ class MainWindow(QMainWindow):
         self.content_area = QStackedWidget()
 
         # Adiciona a tela de Dashboard como "Home"
-        self.dashboard_widget = DashboardWidget(self.usuario_model, self.aprovacao_model, self._navigate)
+        self.dashboard_widget = DashboardWidget(
+            self.usuario_model,
+            self.aprovacao_model,
+            self._navigate,
+            usuario_logado['tipo_usuario'],  # Tipo do usuário
+            usuario_logado['id'],  # Passa o ID do usuário logado
+            usuario_logado.get('cidade_admin')  # Cidade do admin (se aplicável)
+        )
         self.content_area.addWidget(self.dashboard_widget)
 
         # Adiciona os demais widgets
@@ -169,20 +177,20 @@ class MainWindow(QMainWindow):
 
     def _show_notifications(self):
         try:
-            notificacoes = TelaNotificacoes(self.aprovacao_model)
+            notificacoes = TelaNotificacoes(self.aprovacao_model, self.usuario_id, usuario_logado['tipo_usuario'])
             notificacoes.exec()
             self._update_notification_count()
         except Exception as e:
-            print(f"Erro ao mostrar notificações: {e}")
+            logging.error(f"Erro ao mostrar notificações: {e}")
 
     def _update_notification_count(self):
         try:
-            # Passa o ID do usuário logado para listar as aprovações pendentes com base na cidade
-            count = len(self.aprovacao_model.listar_aprovacoes_pendentes(usuario_id=self.usuario_id))
+            notificacoes = self.aprovacao_model.listar_aprovacoes_pendentes(tipo_usuario=usuario_logado['tipo_usuario'], usuario_id=self.usuario_id)
+            count = len(notificacoes)
             self.notification_count_label.setText(str(count))
             self.notification_count_label.setVisible(count > 0)
         except Exception as e:
-            print(f"Erro ao atualizar contador de notificações: {e}")
+            logging.error(f"Erro ao atualizar contador de notificações: {e}")
 
     def _confirm_exit(self):
         response = QMessageBox.question(
@@ -230,7 +238,7 @@ class MainWindow(QMainWindow):
         else:
             self.setStyleSheet("""
                 QMainWindow { background-color: white; }
-                QWidget { background-color: #f0f0f0; color: black; }
+                QWidget { background-color: #b0c4de; color: black; }
                 QPushButton {
                     background-color: #e0e0e0; 
                     color: black; 

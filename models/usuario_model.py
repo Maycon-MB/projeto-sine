@@ -20,12 +20,18 @@ class UsuarioModel:
         query = "SELECT 1 FROM usuarios WHERE usuario = %s"
         result = self.db.execute_query(query, (usuario.upper(),), fetch_one=True)
         return result is not None
+    
+    def buscar_cidade_id(self, cidade_nome):
+        query = "SELECT id FROM cidades WHERE nome = %s"
+        result = self.db.execute_query(query, (cidade_nome.upper(),), fetch_one=True)
+        if result:
+            return result['id']
+        raise ValueError(f"Cidade '{cidade_nome}' não encontrada.")
 
-    def cadastrar_usuario(self, usuario, senha, email, cidade, tipo_usuario):
+    def cadastrar_usuario(self, usuario, senha, email, cidade_id, tipo_usuario):
         try:
             usuario = usuario.upper()
             email = email.upper()
-            cidade = cidade.upper()
 
             if self.verificar_email_existente(email):
                 raise ValueError("E-mail já cadastrado.")
@@ -34,19 +40,27 @@ class UsuarioModel:
 
             senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
             query = """
-            INSERT INTO usuarios (usuario, senha, email, cidade, tipo_usuario)
+            INSERT INTO usuarios (usuario, senha, email, cidade_id, tipo_usuario)
             VALUES (%s, %s, %s, %s, %s)
             RETURNING id;
             """
-            result = self.db.execute_query(query, (usuario, senha_hash, email, cidade, tipo_usuario), fetch_one=True)
-            
+            result = self.db.execute_query(query, (usuario, senha_hash, email, cidade_id, tipo_usuario), fetch_one=True)
+
             # Envia aprovação pendente para o admin/master
-            self.aprovacao_model.enviar_aprovacao(result['id'], cidade)
+            self.aprovacao_model.enviar_aprovacao(result['id'], cidade_id)
             logging.info(f"Usuário cadastrado com ID: {result['id']}, aguardando aprovação.")
             return result['id']
         except Exception as e:
             logging.error(f"Erro ao cadastrar usuário: {e}")
             raise
+
+    def listar_cidades(self):
+        """
+        Retorna uma lista de cidades disponíveis no banco de dados.
+        """
+        query = "SELECT id, nome FROM cidades ORDER BY nome;"
+        return self.db.execute_query(query, fetch_all=True)
+
 
     def _registrar_log(self, usuario_id, acao):
         query = "INSERT INTO logs_auditoria (usuario_id, acao) VALUES (%s, %s);"
@@ -96,7 +110,11 @@ class UsuarioModel:
         return False
 
     def buscar_usuario_por_login(self, usuario):
-        query = "SELECT id, senha FROM usuarios WHERE usuario = %s OR email = %s"
+        query = """
+        SELECT id, usuario, email, cidade_id, tipo_usuario, senha
+        FROM usuarios
+        WHERE usuario = %s OR email = %s
+        """
         return self.db.execute_query(query, (usuario.upper(), usuario.upper()), fetch_one=True)
     
     def total_curriculos(self):
@@ -105,3 +123,15 @@ class UsuarioModel:
         result = self.db.execute_query(query, fetch_one=True)
         return result['count'] if result else 0
 
+    def cidades_com_curriculos(self):
+        """
+        Retorna uma lista com o número de currículos agrupados por cidade.
+        """
+        query = """
+        SELECT ci.nome, COUNT(c.id) AS total
+        FROM curriculo c
+        INNER JOIN cidades ci ON c.cidade_id = ci.id
+        GROUP BY ci.nome
+        ORDER BY total DESC;
+        """
+        return self.db.execute_query(query, fetch_all=True)

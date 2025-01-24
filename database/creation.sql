@@ -191,17 +191,17 @@ TABLESPACE pg_default;
 ALTER TABLE public.servicos
     OWNER TO postgres;
 
--- Tabela: usuarios
 CREATE TABLE public.usuarios (
     id SERIAL PRIMARY KEY,
     usuario VARCHAR(50) NOT NULL,
     senha VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
-    cidade VARCHAR(100) NOT NULL,
-    tipo_usuario VARCHAR(20) NOT NULL CHECK (tipo_usuario IN ('admin', 'comum', 'master')), 
+    cidade_id INTEGER NOT NULL, -- Altera para cidade_id como chave estrangeira
+    tipo_usuario VARCHAR(20) NOT NULL CHECK (tipo_usuario IN ('admin', 'comum', 'master')),
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT usuarios_email_key UNIQUE (email),
-    CONSTRAINT usuarios_usuario_key UNIQUE (usuario)
+    CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
+    CONSTRAINT fk_usuarios_cidade FOREIGN KEY (cidade_id) REFERENCES public.cidades (id)
 )
 TABLESPACE pg_default;
 
