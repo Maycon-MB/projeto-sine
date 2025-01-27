@@ -19,6 +19,9 @@ class CadastroWidget(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
+        """
+        Configura a interface do usuário para o formulário de cadastro de currículo.
+        """
         self.experiencia_count = 0
         self.max_experiencias = 99
 
@@ -40,7 +43,10 @@ class CadastroWidget(QWidget):
         
         self.sexo_input = self.create_combo_box("SEXO:", ["MASCULINO", "FEMININO"], form_layout, 2)
 
-        self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")  # Manter a máscara de data
+        self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")  # Mantém a máscara de data
+
+        # Campo de CEP
+        self.cep_input = self.create_line_edit("DIGITE O CEP", "CEP:", form_layout, 4, mask="00000-000")
 
         try:
             cidades_raw = self.curriculo_model.listar_cidades()
@@ -49,11 +55,11 @@ class CadastroWidget(QWidget):
             QMessageBox.critical(self, "Erro", f"Erro ao listar cidades: {e}")
             cidades = ["SELECIONE UMA CIDADE"]
 
-        self.cidade_input = self.create_combo_box("CIDADE:", cidades, form_layout, 4)
+        self.cidade_input = self.create_combo_box("CIDADE:", cidades, form_layout, 5)
 
-        self.telefone_input = self.create_line_edit("DIGITE O TELEFONE", "TELEFONE:", form_layout, 5, mask="(00) 00000-0000")
+        self.telefone_input = self.create_line_edit("DIGITE O TELEFONE", "TELEFONE:", form_layout, 6, mask="(00) 00000-0000")
 
-        self.telefone_extra_input = self.create_line_edit("DIGITE O SEGUNDO TELEFONE (OPCIONAL)", "TELEFONE EXTRA:", form_layout, 6, mask="(00) 00000-0000")
+        self.telefone_extra_input = self.create_line_edit("DIGITE O SEGUNDO TELEFONE (OPCIONAL)", "TELEFONE EXTRA:", form_layout, 7, mask="(00) 00000-0000")
 
         self.escolaridade_input = self.create_combo_box(
             "ESCOLARIDADE:",
@@ -68,28 +74,36 @@ class CadastroWidget(QWidget):
                 "MESTRADO",
                 "DOUTORADO"
             ],
-            form_layout, 7
+            form_layout, 8
         )
 
+        # Experiência Section
         experiencia_label = QLabel("EXPERIÊNCIA")
         experiencia_label.setStyleSheet("font-size: 20px; font-weight: bold; margin-top: 15px;")
-        form_layout.addWidget(experiencia_label, 8, 0, 1, 2)
+        form_layout.addWidget(experiencia_label, 9, 0, 1, 2)
 
+        # Checkbox de Primeiro Emprego
+        self.primeiro_emprego_input = QCheckBox("PRIMEIRO EMPREGO")
+        form_layout.addWidget(QLabel("PRIMEIRO EMPREGO:"), 10, 0)
+        form_layout.addWidget(self.primeiro_emprego_input, 10, 1)
+
+        # Layout para experiências
         self.experiencias_layout = QVBoxLayout()
-        form_layout.addLayout(self.experiencias_layout, 9, 0, 1, 2)
+        form_layout.addLayout(self.experiencias_layout, 11, 0, 1, 2)
 
         self.add_experiencia_button = QPushButton("ADICIONAR EXPERIÊNCIA")
         self.add_experiencia_button.clicked.connect(self.add_experiencia)
-        form_layout.addWidget(self.add_experiencia_button, 10, 0, 1, 2)
+        form_layout.addWidget(self.add_experiencia_button, 12, 0, 1, 2)
 
-        self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 11)
+        self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 13)
+
         self.vaga_encaminhada_input = QCheckBox("VAGA ENCAMINHADA")
-        form_layout.addWidget(QLabel("ENCAMINHADO:"), 12, 0)
-        form_layout.addWidget(self.vaga_encaminhada_input, 12, 1)
+        form_layout.addWidget(QLabel("ENCAMINHADO:"), 14, 0)
+        form_layout.addWidget(self.vaga_encaminhada_input, 14, 1)
 
         main_layout.addLayout(form_layout)
 
-
+        # Botões de ação
         button_layout = QHBoxLayout()
         self.cadastrar_button = QPushButton("CADASTRAR")
         self.cadastrar_button.clicked.connect(self.cadastrar_dados)
@@ -104,7 +118,10 @@ class CadastroWidget(QWidget):
 
         main_layout.addLayout(button_layout)
 
+        # Adiciona experiência inicial
         self.add_experiencia()
+
+        # Configura a ordem de tabulação
         self.configure_tab_order()
 
     def create_line_edit(self, placeholder, label, layout, row, mask=None):
@@ -256,65 +273,53 @@ class CadastroWidget(QWidget):
             raise ValueError("Cidade não encontrada.")
 
     def cadastrar_dados(self):
-        """
-        Coleta os dados do formulário e cadastra um novo currículo.
-        """
-        # Coleta os dados do formulário
-        cpf = self.cpf_input.text().strip()
-        nome = self.nome_input.text().strip().upper()
-        sexo = self.sexo_input.currentText().upper()
-        data_nascimento = self.data_nascimento_input.text().strip()
-        cidade_nome = self.cidade_input.currentText().upper()
-        telefone = self.telefone_input.text().strip()
-        telefone_extra = self.telefone_extra_input.text().strip()
-        escolaridade = self.escolaridade_input.currentText().upper()
-        vaga_encaminhada = self.vaga_encaminhada_input.isChecked()
-        servico = self.servico_input.currentText().upper()
-
-        experiencias = []
-        for i in range(self.experiencias_layout.count()):
-            layout = self.experiencias_layout.itemAt(i).layout()
-            cargo = layout.itemAt(1).widget().text().strip()
-            anos = layout.itemAt(3).widget().value()
-            meses = layout.itemAt(5).widget().value()
-            if cargo:
-                experiencias.append((cargo, anos, meses))
-
-        # Valida os campos obrigatórios
-        if not cpf or not nome or not telefone or not escolaridade or not cidade_nome:
-            QMessageBox.warning(self, "Erro", "Por favor, preencha todos os campos obrigatórios.")
-            return
-
-        # Validações adicionais
-        cpf_sem_formatacao = re.sub(r"\D", "", cpf)
-        if len(cpf_sem_formatacao) != 11:
-            QMessageBox.warning(self, "Erro", "CPF inválido. Deve conter exatamente 11 números.")
-            return
-
-        if not re.match(r"^[A-Za-zÀ-ÖØ-öø-ÿ\s]+$", nome):
-            QMessageBox.warning(self, "Erro", "Nome inválido. Use apenas letras e espaços.")
-            return
-
-        if not re.match(r"^\(\d{2}\) \d{4,5}-\d{4}$", telefone):
-            QMessageBox.warning(self, "Erro", "Telefone inválido. Use o formato (XX) XXXXX-XXXX.")
-            return
-
-        if data_nascimento and not re.match(r"^\d{2}/\d{2}/\d{4}$", data_nascimento):
-            QMessageBox.warning(self, "Erro", "Data de nascimento inválida. Use o formato dd/mm/aaaa.")
-            return
-
-        # Obtem o ID da cidade
-        cidade_id = self.curriculo_model.obter_cidade_id(cidade_nome)
-        if not cidade_id:
-            QMessageBox.warning(self, "Erro", "Cidade inválida.")
-            return
-
-        # Insere os dados no banco
         try:
-            cpf = self.curriculo_model.limpar_formatacao_cpf(cpf)
-            telefone = self.curriculo_model.limpar_formatacao_telefone(telefone)
-            telefone_extra = self.curriculo_model.limpar_formatacao_telefone(telefone_extra)
+            # Coleta os dados do formulário
+            cpf = self.cpf_input.text().strip()
+            nome = self.nome_input.text().strip().upper()
+            sexo = self.sexo_input.currentText().upper()
+            data_nascimento = self.data_nascimento_input.text().strip()
+            cidade_nome = self.cidade_input.currentText().upper()
+            telefone = self.telefone_input.text().strip()
+            telefone_extra = self.telefone_extra_input.text().strip()
+            escolaridade = self.escolaridade_input.currentText().upper()
+            vaga_encaminhada = self.vaga_encaminhada_input.isChecked()
+            servico = self.servico_input.currentText().upper()
+            primeiro_emprego = self.primeiro_emprego_input.isChecked()
+            cep = self.cep_input.text().strip()
 
+            # Remove caracteres não numéricos do CEP
+            cep_numerico = re.sub(r'\D', '', cep)
+            if len(cep_numerico) != 8:
+                QMessageBox.warning(self, "Erro", "CEP inválido. Deve conter exatamente 8 dígitos numéricos.")
+                return
+
+            # Obtem o ID da cidade
+            cidade_id = self.curriculo_model.obter_cidade_id(cidade_nome)
+            if not cidade_id:
+                QMessageBox.warning(self, "Erro", "Cidade inválida.")
+                return
+
+            # Coleta as experiências
+            experiencias = []
+            for i in range(self.experiencias_layout.count()):
+                layout = self.experiencias_layout.itemAt(i).layout()
+                cargo_input = layout.itemAt(1).widget()  # Cargo
+                anos_input = layout.itemAt(3).widget()   # Anos de experiência
+                meses_input = layout.itemAt(5).widget()  # Meses de experiência
+
+                # Validação local dos campos
+                if cargo_input.text().strip() and 0 <= meses_input.value() < 12:
+                    experiencias.append((
+                        cargo_input.text().strip().upper(),
+                        anos_input.value(),
+                        meses_input.value()
+                    ))
+                else:
+                    QMessageBox.warning(self, "Erro", "Experiência inválida. Verifique os campos de cargo, anos e meses.")
+                    return
+
+            # Insere os dados no banco
             self.curriculo_model.insert_curriculo(
                 nome=nome,
                 cpf=cpf,
@@ -325,17 +330,23 @@ class CadastroWidget(QWidget):
                 telefone_extra=telefone_extra,
                 escolaridade=escolaridade,
                 vaga_encaminhada=vaga_encaminhada,
-                tem_ctps=False,  # Ajustar se necessário
+                tem_ctps=False,  # CTPS não é tratado no formulário atual
                 experiencias=experiencias,
-                servico=servico
+                servico=servico,
+                primeiro_emprego=primeiro_emprego,
+                cep=cep_numerico
             )
 
             QMessageBox.information(self, "Sucesso", "Currículo cadastrado com sucesso.")
             self.limpar_formulario()
+
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao cadastrar currículo: {e}")
 
     def limpar_formulario(self):
+        """
+        Limpa todos os campos do formulário, retornando-os aos valores padrão.
+        """
         self.cpf_input.clear()
         self.nome_input.clear()
         self.sexo_input.setCurrentIndex(0)
@@ -346,6 +357,8 @@ class CadastroWidget(QWidget):
         self.escolaridade_input.setCurrentIndex(0)
         self.servico_input.setCurrentIndex(0)
         self.vaga_encaminhada_input.setChecked(False)
+        self.primeiro_emprego_input.setChecked(False)  # Reseta o checkbox para desmarcado
+        self.cep_input.clear()  # Limpa o campo de CEP
         while self.experiencias_layout.count():
             layout = self.experiencias_layout.takeAt(0).layout()
             self.remove_experiencia(layout)
@@ -355,7 +368,8 @@ class CadastroWidget(QWidget):
         self.setTabOrder(self.cpf_input, self.nome_input)
         self.setTabOrder(self.nome_input, self.sexo_input)
         self.setTabOrder(self.sexo_input, self.data_nascimento_input)
-        self.setTabOrder(self.data_nascimento_input, self.cidade_input)
+        self.setTabOrder(self.data_nascimento_input, self.cep_input)
+        self.setTabOrder(self.cep_input, self.cidade_input)  # Ordem do CEP para Cidade
         self.setTabOrder(self.cidade_input, self.telefone_input)
         self.setTabOrder(self.telefone_input, self.telefone_extra_input)
         self.setTabOrder(self.telefone_extra_input, self.escolaridade_input)
@@ -400,7 +414,6 @@ class CadastroWidget(QWidget):
                 source.setInputMask("")
 
         return super().eventFilter(source, event)
-
 
     def showEvent(self, event):
         """Coloca o foco no campo de Login quando a janela for exibida."""

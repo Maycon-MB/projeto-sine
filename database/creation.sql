@@ -4,7 +4,7 @@ DROP SCHEMA IF EXISTS public CASCADE;
 -- Criar o esquema novamente
 CREATE SCHEMA public;
 
--- Dropar tabelas caso existam, sem a necessidade de CASCADE
+-- Dropar tabelas e views caso existam
 DROP TABLE IF EXISTS public.logs_auditoria;
 DROP TABLE IF EXISTS public.notificacoes;
 DROP VIEW IF EXISTS public.vw_curriculos_detalhados;
@@ -133,11 +133,13 @@ CREATE TABLE public.curriculo (
     data_nascimento DATE NOT NULL,
     cidade_id INTEGER NOT NULL,
     telefone VARCHAR(11) CHECK (telefone ~ '^\d{10,11}$'),
-    telefone_extra VARCHAR(11) CHECK (telefone_extra ~ '^\d{10,11}$'),
+    telefone_extra VARCHAR(11) CHECK (telefone_extra ~ '^\d{10,11}$' OR telefone_extra = '' OR telefone_extra IS NULL), -- Aceitar strings vazias ou NULL
     escolaridade VARCHAR(255) NOT NULL,
     tem_ctps BOOLEAN DEFAULT FALSE,
     servico VARCHAR(6) NOT NULL CHECK (servico IN ('SINE', 'MANUAL')),
     vaga_encaminhada BOOLEAN DEFAULT FALSE,
+    cep CHAR(8) CHECK (cep ~ '^\d{8}$'), -- Nova coluna: CEP
+    primeiro_emprego BOOLEAN DEFAULT FALSE, -- Nova coluna: Primeiro Emprego/Jovem Aprendiz
     CONSTRAINT fk_curriculo_cidade FOREIGN KEY (cidade_id) REFERENCES public.cidades (id)
 )
 TABLESPACE pg_default;
@@ -246,6 +248,8 @@ SELECT
     c.tem_ctps,
     c.servico,
     c.vaga_encaminhada,
+    c.cep, -- Adicionado o CEP
+    c.primeiro_emprego, -- Adicionado Primeiro Emprego/Jovem Aprendiz
     e.cargo,
     e.anos_experiencia,
     e.meses_experiencia
@@ -272,9 +276,13 @@ CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
     p_idade_min INTEGER DEFAULT NULL,
     p_idade_max INTEGER DEFAULT NULL,
     p_experiencia_min INTEGER DEFAULT NULL,
-    p_experiencia_max INTEGER DEFAULT NULL, -- Adicionar o parâmetro para experiência máxima
+    p_experiencia_max INTEGER DEFAULT NULL,
     p_sexo TEXT DEFAULT NULL,
     p_cpf TEXT DEFAULT NULL,
+    p_cep TEXT DEFAULT NULL,
+    p_primeiro_emprego BOOLEAN DEFAULT NULL,
+    p_telefone TEXT DEFAULT NULL, -- Novo parâmetro para Telefone
+    p_telefone_extra TEXT DEFAULT NULL, -- Novo parâmetro para Telefone Extra
     p_limite INTEGER DEFAULT 10,
     p_offset INTEGER DEFAULT 0
 )
@@ -288,6 +296,8 @@ RETURNS TABLE (
     escolaridade TEXT,
     tem_ctps TEXT,
     vaga_encaminhada TEXT,
+    cep TEXT,
+    primeiro_emprego BOOLEAN,
     cargo TEXT,
     anos_experiencia INTEGER,
     meses_experiencia INTEGER
@@ -304,6 +314,8 @@ BEGIN
         c.escolaridade::TEXT,  
         CASE WHEN c.tem_ctps THEN 'Sim' ELSE 'Não' END::TEXT AS tem_ctps,  
         CASE WHEN c.vaga_encaminhada THEN 'Sim' ELSE 'Não' END::TEXT AS vaga_encaminhada,  
+        c.cep::TEXT, 
+        c.primeiro_emprego, 
         e.cargo::TEXT,  
         e.anos_experiencia,
         e.meses_experiencia
@@ -317,7 +329,7 @@ BEGIN
         (p_nome IS NULL OR c.nome ILIKE '%' || p_nome || '%') AND
         (p_cidade IS NULL OR ci.nome ILIKE '%' || p_cidade || '%') AND
         (p_escolaridade IS NULL OR c.escolaridade = p_escolaridade) AND
-        (p_cargo IS NULL OR e.cargo ILIKE '%' || p_cargo || '%') AND
+        (p_cargo IS NULL OR (e.cargo IS NOT NULL AND e.cargo ILIKE '%' || p_cargo || '%')) AND
         (p_vaga_encaminhada IS NULL OR c.vaga_encaminhada = p_vaga_encaminhada) AND
         (p_tem_ctps IS NULL OR c.tem_ctps = p_tem_ctps) AND
         (p_servico IS NULL OR c.servico = p_servico) AND
@@ -328,7 +340,12 @@ BEGIN
         (p_experiencia_max IS NULL OR 
          ((e.anos_experiencia * 12) + e.meses_experiencia) <= p_experiencia_max) AND
         (p_sexo IS NULL OR c.sexo = p_sexo) AND
-        (p_cpf IS NULL OR c.cpf = p_cpf)  -- Filtro de CPF
+        (p_cpf IS NULL OR c.cpf = p_cpf) AND
+        (p_cep IS NULL OR c.cep = p_cep) AND
+        (p_primeiro_emprego IS NULL OR c.primeiro_emprego = p_primeiro_emprego) AND
+        (p_telefone IS NULL OR TRIM(c.telefone) LIKE '%' || TRIM(p_telefone) || '%') AND 
+        (p_telefone_extra IS NULL OR TRIM(c.telefone_extra) LIKE '%' || TRIM(p_telefone_extra) || '%')
+
     LIMIT p_limite OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql;

@@ -202,58 +202,7 @@ class LoginCadastroDialog(QDialog):
         layout.addWidget(btn_toggle)
         container.setLayout(layout)
         return password_input, container
-
-    def configurar_transicao_enter(self, widgets):
-        """Configura a navegação entre widgets usando Enter."""
-        for i, widget in enumerate(widgets):
-            widget.setProperty("index", i)  # Define o índice do widget
-            widget.installEventFilter(self)  # Instala o filtro de eventos
-
-    def eventFilter(self, source, event):
-        """Captura o evento Enter para alternar entre widgets e acionar o botão."""
-        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
-            # Lista de widgets para o cadastro
-            widgets_cadastro = [
-                self.nome_input,
-                self.usuario_input,
-                self.cidade_combobox,
-                self.cadastro_email_input,
-                self.cadastro_password_input,
-                self.confirm_password_input,
-            ]
-
-            # Lista de widgets para o login
-            widgets_login = [
-                self.login_usuario_input,
-                self.login_senha_input,
-            ]
-
-            # Verifica a navegação na aba de cadastro
-            if source in widgets_cadastro:
-                current_index = widgets_cadastro.index(source)
-                next_index = current_index + 1
-                if next_index < len(widgets_cadastro):
-                    widgets_cadastro[next_index].setFocus()
-                else:
-                    self.findChild(QPushButton, "Cadastrar").click()
-                return True  # Evento tratado
-
-            # Verifica a navegação na aba de login
-            if source in widgets_login:
-                current_index = widgets_login.index(source)
-                next_index = current_index + 1
-                if next_index < len(widgets_login):
-                    widgets_login[next_index].setFocus()
-                else:
-                    self.findChild(QPushButton, "Login").click()
-                return True  # Evento tratado
-        return super().eventFilter(source, event)
     
-    def configurar_transicao_enter(self, widgets):
-        """Configura a navegação entre widgets usando Enter."""
-        for widget in widgets:
-            widget.installEventFilter(self)
-
     def is_valid_email(self, email):
         return re.match(r"[^@]+@[^@]+\.[^@]+", email) is not None
 
@@ -347,6 +296,57 @@ class LoginCadastroDialog(QDialog):
                 QMessageBox.information(self, "Recuperação de Senha", f"Token enviado para {email}. Verifique seu e-mail.")
             except Exception as e:
                 QMessageBox.critical(self, "Erro", f"Erro ao enviar token: {e}")
+
+    def eventFilter(self, source, event):
+        """Captura o evento Enter para alternar entre widgets e acionar o botão."""
+        if event.type() == QEvent.KeyPress and event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            # Lista de widgets para o cadastro
+            widgets_cadastro = [
+                self.nome_input,
+                self.usuario_input,
+                self.cidade_combobox,
+                self.cadastro_email_input,
+                self.cadastro_password_input,
+                self.confirm_password_input,
+            ]
+
+            # Lista de widgets para o login
+            widgets_login = [
+                self.login_usuario_input,
+                self.login_senha_input,
+            ]
+
+            # Verifica a navegação na aba de cadastro
+            if source in widgets_cadastro:
+                current_index = widgets_cadastro.index(source)
+                next_index = current_index + 1
+                if next_index < len(widgets_cadastro):
+                    widgets_cadastro[next_index].setFocus()
+                else:
+                    self.findChild(QPushButton, "Cadastrar").click()
+                return True  # Evento tratado
+
+            # Verifica a navegação na aba de login
+            if source in widgets_login:
+                current_index = widgets_login.index(source)
+                next_index = current_index + 1
+                if next_index < len(widgets_login):
+                    widgets_login[next_index].setFocus()
+                else:
+                    self.findChild(QPushButton, "Login").click()
+                return True  # Evento tratado
+        return super().eventFilter(source, event)
+    
+    def configurar_transicao_enter(self, widgets):
+        """Configura a navegação entre widgets usando Enter."""
+        for i, widget in enumerate(widgets):
+            widget.setProperty("index", i)  # Define o índice do widget
+            widget.installEventFilter(self)  # Instala o filtro de eventos
+
+    def configurar_transicao_enter(self, widgets):
+        """Configura a navegação entre widgets usando Enter."""
+        for widget in widgets:
+            widget.installEventFilter(self)
 
     def showEvent(self, event):
         """Coloca o foco no campo de Login quando a janela for exibida."""
