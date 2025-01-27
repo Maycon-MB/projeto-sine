@@ -76,61 +76,31 @@ class CurriculoModel:
             print(f"Erro ao verificar duplicidade de CPF: {e}")
             return False
 
-    def create_tables(self):
-        """
-        Cria as tabelas necessárias no banco de dados, se ainda não existirem.
-        """
-        queries = [
-            """
-            CREATE TABLE IF NOT EXISTS curriculo (
-                id SERIAL PRIMARY KEY,
-                nome VARCHAR(100) NOT NULL,
-                idade INT NOT NULL,
-                telefone VARCHAR(20) UNIQUE NOT NULL,
-                escolaridade VARCHAR(50) NOT NULL
-            );
-            """,
-            """
-            CREATE TABLE IF NOT EXISTS experiencias (
-                id SERIAL PRIMARY KEY,
-                id_curriculo INT NOT NULL,
-                cargo VARCHAR(100) NOT NULL,
-                anos_experiencia INT NOT NULL,
-                FOREIGN KEY (id_curriculo) REFERENCES curriculo (id) ON DELETE CASCADE
-            );
-            """
-        ]
-
-        for query in queries:
-            try:
-                self.db.execute_query(query)
-            except Exception as e:
-                print(f"Erro ao criar tabelas: {e}")
-                raise
-
-        index_queries = [
-            "CREATE INDEX IF NOT EXISTS idx_curriculo_nome ON curriculo (nome);",
-            "CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade ON curriculo (escolaridade);",
-            "CREATE INDEX IF NOT EXISTS idx_curriculo_idade ON curriculo (idade);"
-        ]
-
-        for query in index_queries:
-            try:
-                self.db.execute_query(query)
-            except Exception as e:
-                print(f"Erro ao criar índices: {e}")
-                raise
-
     def fetch_curriculos(self, filtros, limite=10, offset=0):
         """
         Busca currículos aplicando filtros dinâmicos e paginação.
         """
         query = """
             SELECT * FROM filtrar_curriculos(
-                %(nome)s, %(cidade)s, %(escolaridade)s, %(cargo)s, 
-                %(vaga_encaminhada)s, %(tem_ctps)s, %(servico)s, 
-                %(idade_min)s, %(idade_max)s, %(experiencia_min)s, %(experiencia_max)s,
-                %(sexo)s, %(cpf)s, %(limite)s, %(offset)s
+                %(nome)s::TEXT, 
+                %(cidade)s::TEXT, 
+                %(escolaridade)s::TEXT, 
+                %(cargo)s::TEXT, 
+                %(vaga_encaminhada)s::BOOLEAN, 
+                %(tem_ctps)s::BOOLEAN, 
+                %(servico)s::TEXT, 
+                %(idade_min)s::INTEGER, 
+                %(idade_max)s::INTEGER, 
+                %(experiencia_min)s::INTEGER, 
+                %(experiencia_max)s::INTEGER, 
+                %(sexo)s::TEXT, 
+                %(cpf)s::TEXT, 
+                %(cep)s::TEXT, 
+                %(primeiro_emprego)s::BOOLEAN, 
+                %(telefone)s::TEXT, 
+                %(telefone_extra)s::TEXT, 
+                %(limite)s::INTEGER, 
+                %(offset)s::INTEGER
             );
         """
         params = {
@@ -143,10 +113,12 @@ class CurriculoModel:
             "servico": filtros.get("servico"),
             "idade_min": filtros.get("idade_min"),
             "idade_max": filtros.get("idade_max"),
-            "experiencia_min": filtros.get("experiencia_min"),  # Passar experiência mínima
-            "experiencia_max": filtros.get("experiencia_max"),  # Passar experiência máxima
+            "experiencia_min": filtros.get("experiencia_min"),
+            "experiencia_max": filtros.get("experiencia_max"),
             "sexo": filtros.get("sexo"),
             "cpf": filtros.get("cpf"),
+            "cep": filtros.get("cep"),  # Novo filtro
+            "primeiro_emprego": filtros.get("primeiro_emprego"),  # Novo filtro
             "limite": limite,
             "offset": offset,
         }
@@ -159,6 +131,7 @@ class CurriculoModel:
         query = """
         SELECT c.id AS curriculo_id, c.nome, c.cpf, c.sexo, c.data_nascimento, ci.nome AS cidade, 
             c.telefone, c.telefone_extra, c.escolaridade, c.servico, c.vaga_encaminhada, 
+            c.cep, c.primeiro_emprego, -- Incluindo os novos campos
             e.cargo, e.anos_experiencia, e.meses_experiencia
         FROM curriculo c
         LEFT JOIN experiencias e ON c.id = e.id_curriculo
@@ -166,18 +139,15 @@ class CurriculoModel:
         WHERE c.id = %s;
         """
         try:
-            # Alterar para fetch_one
             return self.db.execute_query(query, (curriculo_id,), fetch_one=True)
         except Exception as e:
             print(f"Erro ao buscar currículo por ID: {e}")
             return None
 
-
-    def update_curriculo(self, curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico):
+    def update_curriculo(self, curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego):
         """
         Atualiza os dados de um currículo.
         """
-        # Limpa e valida o CPF e telefones
         cpf = self.limpar_formatacao_cpf(cpf)
         telefone = self.limpar_formatacao_telefone(telefone)
         telefone_extra = self.limpar_formatacao_telefone(telefone_extra) if telefone_extra else None
@@ -186,18 +156,22 @@ class CurriculoModel:
             raise ValueError("CPF inválido. Deve conter 11 dígitos numéricos.")
         if not self.validar_telefone(telefone):
             raise ValueError("Telefone inválido. Deve conter 10 ou 11 dígitos.")
+        if cep:
+            cep = re.sub(r"\D", "", cep)  # Remove caracteres não numéricos
+            if len(cep) != 8:
+                raise ValueError("CEP inválido. Deve conter exatamente 8 dígitos numéricos.")
 
         query = """
         UPDATE curriculo
         SET nome = %s, cpf = %s, sexo = %s, data_nascimento = %s, cidade_id = %s,
             telefone = %s, telefone_extra = %s, escolaridade = %s, vaga_encaminhada = %s,
-            tem_ctps = %s, servico = %s
+            tem_ctps = %s, servico = %s, cep = %s, primeiro_emprego = %s
         WHERE id = %s;
         """
         try:
             self.db.execute_query(
                 query,
-                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, curriculo_id)
+                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego, curriculo_id)
             )
         except Exception as e:
             print(f"Erro ao atualizar currículo: {e}")
@@ -217,30 +191,33 @@ class CurriculoModel:
             print(f"Erro ao buscar ID da cidade: {e}")
             raise
 
-    def insert_curriculo(self, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, experiencias, servico):
+    def insert_curriculo(self, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, experiencias, servico, cep, primeiro_emprego):
         """
         Insere um novo currículo no banco de dados, incluindo as experiências.
         """
-        # Limpa e valida o CPF e telefones
+        # Limpa e valida o CPF, telefones e CEP
         cpf = self.limpar_formatacao_cpf(cpf)
         telefone = self.limpar_formatacao_telefone(telefone)
         telefone_extra = self.limpar_formatacao_telefone(telefone_extra) if telefone_extra else None
+        cep = re.sub(r'\D', '', cep)  # Remove caracteres não numéricos do CEP
 
         if not self.validar_cpf(cpf):
             raise ValueError("CPF inválido. Deve conter 11 dígitos numéricos.")
         if not self.validar_telefone(telefone):
             raise ValueError("Telefone inválido. Deve conter 10 ou 11 dígitos.")
+        if len(cep) != 8:  # Verifica se o CEP contém exatamente 8 dígitos
+            raise ValueError("CEP inválido. Deve conter exatamente 8 dígitos numéricos.")
 
         # Insere os dados do currículo
         query_curriculo = """
-        INSERT INTO curriculo (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO curriculo (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id;
         """
         try:
             curriculo_id = self.db.execute_query(
                 query_curriculo,
-                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico),
+                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego),
                 fetch_one=True
             )['id']
 

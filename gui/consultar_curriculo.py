@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QGridLayout, QFrame, 
-    QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox
+    QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QGroupBox
 )
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QHeaderView
@@ -31,12 +31,32 @@ class ConsultaWidget(QWidget):
         filter_layout = self.create_filter_layout()
         layout.addLayout(filter_layout)
 
+        # Botões de ação (Buscar e Limpar Filtros)
+        button_layout = QHBoxLayout()
+
+        # Alinha os botões no centro
+        button_layout.setAlignment(Qt.AlignCenter)
+
+        self.search_button = QPushButton("Buscar")
+        self.search_button.setStyleSheet(self._button_stylesheet())
+        self.search_button.clicked.connect(self.search_curriculos)
+        button_layout.addWidget(self.search_button)
+
+        self.clear_button = QPushButton("Limpar Filtros")
+        self.clear_button.setStyleSheet(self._button_stylesheet())
+        self.clear_button.clicked.connect(self.clear_filters)
+        button_layout.addWidget(self.clear_button)
+
+        # Adiciona o layout dos botões ao layout principal
+        layout.addLayout(button_layout)
+
         # Tabela de resultados
         self.table = QTableWidget()
-        self.table.setColumnCount(12)  # Número de colunas ajustado para incluir novos campos
+        self.table.setColumnCount(14)  # Número de colunas ajustado para incluir novos campos
         self.table.setHorizontalHeaderLabels([
-            "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CIDADE", "ESCOLARIDADE", 
-            "CARGO", "ANOS EXP.", "MESES EXP.", "CTPS", "VAGA ENCAMINHADA", "AÇÕES"
+            "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CIDADE", "ESCOLARIDADE",
+            "CARGO", "ANOS EXP.", "MESES EXP.", "CTPS", "VAGA ENCAMINHADA", 
+            "PRIMEIRO EMPREGO", "CEP", "AÇÕES"  # Novos campos adicionados
         ])
         self.table.setShowGrid(True)
         header = self.table.horizontalHeader()
@@ -70,7 +90,7 @@ class ConsultaWidget(QWidget):
     def create_filter_layout(self):
         filter_layout = QGridLayout()
 
-        # Coluna 1: CPF, NOME, SEXO, CIDADE
+        # **Primeira coluna (CPF, NOME, SEXO, IDADE MÍNIMA, IDADE MÁXIMA)**
         filter_layout.addWidget(QLabel("CPF:"), 0, 0)
         self.cpf_input = QLineEdit()
         self.cpf_input.setPlaceholderText("Digite o CPF")
@@ -86,52 +106,42 @@ class ConsultaWidget(QWidget):
         self.sexo_input.addItems(["", "MASCULINO", "FEMININO"])
         filter_layout.addWidget(self.sexo_input, 2, 1)
 
-        filter_layout.addWidget(QLabel("CIDADE:"), 3, 0)
+        filter_layout.addWidget(QLabel("IDADE MÍNIMA:"), 3, 0)
+        self.idade_min_input = QSpinBox()
+        self.idade_min_input.setRange(0, 120)
+        self.idade_min_input.setSuffix(" anos")
+        filter_layout.addWidget(self.idade_min_input, 3, 1)
+
+        filter_layout.addWidget(QLabel("IDADE MÁXIMA:"), 4, 0)
+        self.idade_max_input = QSpinBox()
+        self.idade_max_input.setRange(0, 120)
+        self.idade_max_input.setSuffix(" anos")
+        filter_layout.addWidget(self.idade_max_input, 4, 1)
+
+        # **Segunda coluna (CEP, CIDADE, TELEFONE, TELEFONE EXTRA, ESCOLARIDADE)**
+        filter_layout.addWidget(QLabel("CEP:"), 0, 2)
+        self.cep_input = QLineEdit()
+        self.cep_input.setPlaceholderText("Digite o CEP")
+        filter_layout.addWidget(self.cep_input, 0, 3)
+
+        filter_layout.addWidget(QLabel("CIDADE:"), 1, 2)
         self.cidade_input = QComboBox()
         self.cidade_input.addItem("")
         cidades = self.curriculo_model.listar_cidades()
         self.cidade_input.addItems(cidades)
-        filter_layout.addWidget(self.cidade_input, 3, 1)
+        filter_layout.addWidget(self.cidade_input, 1, 3)
 
-        # Divisor vertical após coluna 1
-        vertical_divider1 = QFrame()
-        vertical_divider1.setFrameShape(QFrame.VLine)
-        vertical_divider1.setFrameShadow(QFrame.Sunken)
-        vertical_divider1.setStyleSheet("background-color: #0056A1; width: 2px;")
-        filter_layout.addWidget(vertical_divider1, 0, 2, 4, 1)  # Ocupa 4 linhas e 1 coluna
-
-        # Coluna 2: IDADE MIN, IDADE MAX, TELEFONE, TELEFONE EXTRA
-        filter_layout.addWidget(QLabel("IDADE MÍNIMA:"), 0, 3)
-        self.idade_min_input = QSpinBox()
-        self.idade_min_input.setRange(0, 120)
-        self.idade_min_input.setSuffix(" anos")
-        filter_layout.addWidget(self.idade_min_input, 0, 4)
-
-        filter_layout.addWidget(QLabel("IDADE MÁXIMA:"), 1, 3)
-        self.idade_max_input = QSpinBox()
-        self.idade_max_input.setRange(0, 120)
-        self.idade_max_input.setSuffix(" anos")
-        filter_layout.addWidget(self.idade_max_input, 1, 4)
-
-        filter_layout.addWidget(QLabel("TELEFONE:"), 2, 3)
+        filter_layout.addWidget(QLabel("TELEFONE:"), 2, 2)
         self.telefone_input = QLineEdit()
         self.telefone_input.setPlaceholderText("Digite o telefone")
-        filter_layout.addWidget(self.telefone_input, 2, 4)
+        filter_layout.addWidget(self.telefone_input, 2, 3)
 
-        filter_layout.addWidget(QLabel("TELEFONE EXTRA:"), 3, 3)
+        filter_layout.addWidget(QLabel("TELEFONE EXTRA:"), 3, 2)
         self.telefone_extra_input = QLineEdit()
         self.telefone_extra_input.setPlaceholderText("Digite o telefone extra")
-        filter_layout.addWidget(self.telefone_extra_input, 3, 4)
+        filter_layout.addWidget(self.telefone_extra_input, 3, 3)
 
-        # Divisor vertical após coluna 2
-        vertical_divider2 = QFrame()
-        vertical_divider2.setFrameShape(QFrame.VLine)
-        vertical_divider2.setFrameShadow(QFrame.Sunken)
-        vertical_divider2.setStyleSheet("background-color: #0056A1; width: 2px;")
-        filter_layout.addWidget(vertical_divider2, 0, 5, 4, 1)  # Ocupa 4 linhas e 1 coluna
-
-        # Coluna 3: ESCOLARIDADE, CARGO, SERVIÇO, VAGA ENCAMINHADA
-        filter_layout.addWidget(QLabel("ESCOLARIDADE:"), 0, 6)
+        filter_layout.addWidget(QLabel("ESCOLARIDADE:"), 4, 2)
         self.escolaridade_input = QComboBox()
         self.escolaridade_input.addItems([
             "",
@@ -145,80 +155,54 @@ class ConsultaWidget(QWidget):
             "MESTRADO",
             "DOUTORADO"
         ])
-        filter_layout.addWidget(self.escolaridade_input, 0, 7)
+        filter_layout.addWidget(self.escolaridade_input, 4, 3)
 
-        filter_layout.addWidget(QLabel("CARGO:"), 1, 6)
+        # **Terceira coluna (CARGO, SERVIÇO, VAGA ENCAMINHADA, PRIMEIRO EMPREGO)**
+        filter_layout.addWidget(QLabel("CARGO:"), 0, 4)
         self.cargo_input = QLineEdit()
         self.cargo_input.setPlaceholderText("Digite o cargo")
-        filter_layout.addWidget(self.cargo_input, 1, 7)
+        filter_layout.addWidget(self.cargo_input, 0, 5)
 
-        filter_layout.addWidget(QLabel("SERVIÇO:"), 2, 6)
+        filter_layout.addWidget(QLabel("SERVIÇO:"), 1, 4)
         self.servico_input = QComboBox()
         self.servico_input.addItems(["", "SINE", "MANUAL"])
-        filter_layout.addWidget(self.servico_input, 2, 7)
+        filter_layout.addWidget(self.servico_input, 1, 5)
 
-        filter_layout.addWidget(QLabel("VAGA ENCAMINHADA:"), 3, 6)
+        filter_layout.addWidget(QLabel("VAGA ENCAMINHADA:"), 2, 4)
         self.vaga_encaminhada_input = QComboBox()
         self.vaga_encaminhada_input.addItems(["", "Sim", "Não"])
-        filter_layout.addWidget(self.vaga_encaminhada_input, 3, 7)
+        filter_layout.addWidget(self.vaga_encaminhada_input, 2, 5)
 
-        # Divisor vertical após coluna 3
-        vertical_divider3 = QFrame()
-        vertical_divider3.setFrameShape(QFrame.VLine)
-        vertical_divider3.setFrameShadow(QFrame.Sunken)
-        vertical_divider3.setStyleSheet("background-color: #0056A1; width: 2px;")
-        filter_layout.addWidget(vertical_divider3, 0, 8, 4, 1)  # Ocupa 4 linhas e 1 coluna
+        filter_layout.addWidget(QLabel("PRIMEIRO EMPREGO:"), 3, 4)
+        self.primeiro_emprego_input = QComboBox()
+        self.primeiro_emprego_input.addItems(["", "Sim", "Não"])
+        filter_layout.addWidget(self.primeiro_emprego_input, 3, 5)
 
-        # Coluna 4: EXPERIÊNCIA MESES MIN, MESES MAX, ANOS MIN, ANOS MAX
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÍN.):"), 0, 9)
-        self.experiencia_meses_min = QSpinBox()
-        self.experiencia_meses_min.setRange(0, 11)
-        filter_layout.addWidget(self.experiencia_meses_min, 0, 10)
-
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÁX.):"), 1, 9)
-        self.experiencia_meses_max = QSpinBox()
-        self.experiencia_meses_max.setRange(0, 11)
-        filter_layout.addWidget(self.experiencia_meses_max, 1, 10)
-
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÍN.):"), 2, 9)
+        # **Quarta coluna (EXPERIÊNCIA ANOS MIN, ANOS MAX, MESES MIN, MESES MAX, CTPS)**
+        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÍN.):"), 0, 6)
         self.experiencia_anos_min = QSpinBox()
         self.experiencia_anos_min.setRange(0, 50)
-        filter_layout.addWidget(self.experiencia_anos_min, 2, 10)
+        filter_layout.addWidget(self.experiencia_anos_min, 0, 7)
 
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÁX.):"), 3, 9)
+        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÁX.):"), 1, 6)
         self.experiencia_anos_max = QSpinBox()
         self.experiencia_anos_max.setRange(0, 50)
-        filter_layout.addWidget(self.experiencia_anos_max, 3, 10)
+        filter_layout.addWidget(self.experiencia_anos_max, 1, 7)
 
-        # Adicionar divisor horizontal
-        horizontal_divider = QFrame()
-        horizontal_divider.setFrameShape(QFrame.HLine)
-        horizontal_divider.setFrameShadow(QFrame.Sunken)
-        horizontal_divider.setStyleSheet("background-color: #0056A1; height: 2px;")
-        filter_layout.addWidget(horizontal_divider, 4, 0, 1, 11)
+        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÍN.):"), 2, 6)
+        self.experiencia_meses_min = QSpinBox()
+        self.experiencia_meses_min.setRange(0, 11)  # Meses variam de 0 a 11
+        filter_layout.addWidget(self.experiencia_meses_min, 2, 7)
 
-        # Linha de botões de ação
-        button_layout = QHBoxLayout()
-        button_layout.setAlignment(Qt.AlignCenter)  # Centraliza os botões
+        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÁX.):"), 3, 6)
+        self.experiencia_meses_max = QSpinBox()
+        self.experiencia_meses_max.setRange(0, 11)
+        filter_layout.addWidget(self.experiencia_meses_max, 3, 7)
 
-        # Dimensões dos botões (20% da largura da tela)
-        screen_width = self.screen().geometry().width()
-        button_width = int(screen_width * 0.1)
-
-        self.search_button = QPushButton("BUSCAR")
-        self.search_button.setStyleSheet(self._button_stylesheet())
-        self.search_button.setFixedSize(button_width, 40)  # Largura dinâmica e altura fixa
-        self.search_button.clicked.connect(self.search_curriculos)
-        button_layout.addWidget(self.search_button)
-
-        self.clear_button = QPushButton("LIMPAR FILTROS")
-        self.clear_button.setStyleSheet(self._button_stylesheet())
-        self.clear_button.setFixedSize(button_width, 40)  # Largura dinâmica e altura fixa
-        self.clear_button.clicked.connect(self.clear_filters)
-        button_layout.addWidget(self.clear_button)
-
-        filter_layout.addLayout(button_layout, 5, 0, 1, 11)  # Adiciona os botões centralizados
-
+        filter_layout.addWidget(QLabel("CTPS:"), 4, 6)
+        self.ctps_input = QComboBox()
+        self.ctps_input.addItems(["", "Sim", "Não"])
+        filter_layout.addWidget(self.ctps_input, 4, 7)
 
         return filter_layout
 
@@ -226,13 +210,17 @@ class ConsultaWidget(QWidget):
         return """
             QPushButton {
                 text-align: center;
-                border-radius: 5px;
-                font-size: 14px;
+                border-radius: 10px;  /* Bordas mais arredondadas */
+                font-size: 14px;  /* Texto menor */
                 font-weight: bold;
                 color: white;
-                border: none;
+                border: 2px solid #026bc7;  /* Cor da borda */
                 background-color: #026bc7;
+                padding: 8px 12px;  /* Botão menor, com menos espaçamento interno */
                 outline: none;
+                width: 100px;  /* Largura fixa para os botões */
+                min-width: 100px;  /* Largura mínima do botão */
+                max-width: 120px;  /* Máxima largura para os botões, se necessário */
             }
             QPushButton:hover {
                 background-color: #367dba;
@@ -243,6 +231,11 @@ class ConsultaWidget(QWidget):
         """
     
     def search_curriculos(self):
+        # Calcula a experiência mínima e máxima em meses
+        experiencia_min_meses = (self.experiencia_anos_min.value() * 12) + self.experiencia_meses_min.value()
+        experiencia_max_meses = (self.experiencia_anos_max.value() * 12) + self.experiencia_meses_max.value()
+
+        # Define os filtros com as variáveis calculadas
         filtros = {
             "nome": self.nome_input.text().strip() or None,
             "cpf": self.cpf_input.text().strip() or None,
@@ -251,48 +244,36 @@ class ConsultaWidget(QWidget):
             "idade_min": self.idade_min_input.value() or None,
             "idade_max": self.idade_max_input.value() or None,
             "escolaridade": self.escolaridade_input.currentText() or None,
+            "telefone": self.telefone_input.text().strip() or None,
             "telefone_extra": self.telefone_extra_input.text().strip() or None,
             "servico": self.servico_input.currentText() or None,
-            "vaga_encaminhada": self.vaga_encaminhada_input.currentText(),
+            "vaga_encaminhada": {
+                "Sim": True,
+                "Não": False
+            }.get(self.vaga_encaminhada_input.currentText(), None),
+            "primeiro_emprego": {
+                "Sim": True,
+                "Não": False
+            }.get(self.primeiro_emprego_input.currentText(), None),
+            "cep": self.cep_input.text().strip() or None,
+            "tem_ctps": {
+                "Sim": True,
+                "Não": False
+            }.get(self.ctps_input.currentText(), None),
+            "experiencia_min": experiencia_min_meses if experiencia_min_meses > 0 else None,
+            "experiencia_max": experiencia_max_meses if experiencia_max_meses > 0 else None,
         }
 
-        # Conversão de vaga encaminhada para booleano
-        filtros["vaga_encaminhada"] = {
-            "Sim": True,
-            "Não": False
-        }.get(filtros["vaga_encaminhada"], None)
-
-        # Ajustar valores de idade para None se forem o padrão
-        if filtros["idade_min"] == 0:
-            filtros["idade_min"] = None
-        if filtros["idade_max"] == 0:
-            filtros["idade_max"] = None
-
-        # Experiência mínima e máxima em meses
-        experiencia_min_meses = (self.experiencia_anos_min.value() * 12) + self.experiencia_meses_min.value()
-        experiencia_max_meses = (self.experiencia_anos_max.value() * 12) + self.experiencia_meses_max.value()
-
-        # Se os valores forem padrão (0), definir como None
-        filtros["experiencia_min"] = experiencia_min_meses if experiencia_min_meses > 0 else None
-        filtros["experiencia_max"] = experiencia_max_meses if experiencia_max_meses > 0 else None
-
         try:
-            # Consultar total de resultados sem paginação
+            # Consulta o banco para obter resultados e popular a tabela
             self.total_results = len(self.curriculo_model.fetch_curriculos(filtros, limite=None, offset=None))
-
-            # Buscar os resultados da página atual
             results = self.curriculo_model.fetch_curriculos(
                 filtros,
                 limite=self.items_per_page,
                 offset=self.current_page * self.items_per_page
             )
-
-            # Atualizar a tabela com os resultados
             self.populate_table(results)
-
-            # Atualizar controles de paginação
             self.update_pagination_controls()
-
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao buscar currículos: {str(e)}")
 
@@ -304,9 +285,16 @@ class ConsultaWidget(QWidget):
         for row_idx, row in enumerate(results):
             for col_idx, key in enumerate([
                 "nome", "idade", "telefone", "telefone_extra", "cidade", "escolaridade", 
-                "cargo", "anos_experiencia", "meses_experiencia", "tem_ctps", "vaga_encaminhada"
+                "cargo", "anos_experiencia", "meses_experiencia", "tem_ctps", "vaga_encaminhada", 
+                "primeiro_emprego", "cep"  # Novas colunas adicionadas
             ]):
-                value = "Sim" if key in ("tem_ctps", "vaga_encaminhada") and row.get(key) else row.get(key, "")
+                # Para valores booleanos, exibe "Sim" ou "Não"
+                if key in ("tem_ctps", "vaga_encaminhada", "primeiro_emprego"):
+                    value = "Sim" if row.get(key) else "Não"
+                else:
+                    value = row.get(key, "")
+
+                # Preenche o valor na célula
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(row_idx, col_idx, item)
@@ -314,8 +302,9 @@ class ConsultaWidget(QWidget):
             # Botão de edição
             edit_button = QPushButton("EDITAR")
             edit_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.open_edit_dialog(id))
-            self.table.setCellWidget(row_idx, 11, edit_button)
+            self.table.setCellWidget(row_idx, 13, edit_button)  # Ajustado para a nova última coluna
 
+        # Atualiza o total de resultados exibido
         self.total_label.setText(f"TOTAL DE CURRÍCULOS: {self.total_results}")
 
     def update_pagination_controls(self):
@@ -365,9 +354,13 @@ class ConsultaWidget(QWidget):
         self.experiencia_anos_max.setValue(0)
         self.experiencia_meses_min.setValue(0)
         self.experiencia_meses_max.setValue(0)
+        self.telefone_input.clear()
         self.telefone_extra_input.clear()
         self.servico_input.setCurrentIndex(0)
         self.vaga_encaminhada_input.setCurrentIndex(0)
-        self.idade_min_input.setValue(0)  # Corrigir: Resetar filtro de idade mínima
-        self.idade_max_input.setValue(0)  # Corrigir: Resetar filtro de idade máxima
+        self.idade_min_input.setValue(0)  # Resetar filtro de idade mínima
+        self.idade_max_input.setValue(0)  # Resetar filtro de idade máxima
+        self.primeiro_emprego_input.setCurrentIndex(0)  # Limpar filtro de primeiro emprego
+        self.cep_input.clear()  # Limpar filtro de CEP
+
         self.search_curriculos()
