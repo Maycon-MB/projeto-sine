@@ -43,9 +43,8 @@ class CadastroWidget(QWidget):
         
         self.sexo_input = self.create_combo_box("SEXO:", ["MASCULINO", "FEMININO"], form_layout, 2)
 
-        self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")  # Mantém a máscara de data
+        self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")
 
-        # Campo de CEP
         self.cep_input = self.create_line_edit("DIGITE O CEP", "CEP:", form_layout, 4, mask="00000-000")
 
         try:
@@ -211,6 +210,9 @@ class CadastroWidget(QWidget):
             self.nome_status_label.setStyleSheet("color: orange;")
 
     def add_experiencia(self):
+        """
+        Adiciona um novo campo para experiência, incluindo um checkbox para CTPS.
+        """
         layout = QHBoxLayout()
         cargo_input = QLineEdit()
         cargo_input.setPlaceholderText("CARGO")
@@ -274,7 +276,7 @@ class CadastroWidget(QWidget):
 
     def cadastrar_dados(self):
         try:
-            # Coleta os dados do formulário
+            # Coleta os dados do formulário principal
             cpf = self.cpf_input.text().strip()
             nome = self.nome_input.text().strip().upper()
             sexo = self.sexo_input.currentText().upper()
@@ -288,10 +290,15 @@ class CadastroWidget(QWidget):
             primeiro_emprego = self.primeiro_emprego_input.isChecked()
             cep = self.cep_input.text().strip()
 
-            # Remove caracteres não numéricos do CEP
+            # Validação de CPF e CEP
+            cpf_numerico = re.sub(r'\D', '', cpf)
+            if len(cpf_numerico) != 11:
+                QMessageBox.warning(self, "Erro", "CPF inválido. Deve conter exatamente 11 dígitos.")
+                return
+
             cep_numerico = re.sub(r'\D', '', cep)
             if len(cep_numerico) != 8:
-                QMessageBox.warning(self, "Erro", "CEP inválido. Deve conter exatamente 8 dígitos numéricos.")
+                QMessageBox.warning(self, "Erro", "CEP inválido. Deve conter exatamente 8 dígitos.")
                 return
 
             # Obtem o ID da cidade
@@ -300,29 +307,33 @@ class CadastroWidget(QWidget):
                 QMessageBox.warning(self, "Erro", "Cidade inválida.")
                 return
 
-            # Coleta as experiências
+            # Coleta as experiências no formato de tupla
             experiencias = []
             for i in range(self.experiencias_layout.count()):
                 layout = self.experiencias_layout.itemAt(i).layout()
-                cargo_input = layout.itemAt(1).widget()  # Cargo
-                anos_input = layout.itemAt(3).widget()   # Anos de experiência
-                meses_input = layout.itemAt(5).widget()  # Meses de experiência
+                cargo_input = layout.itemAt(1).widget()
+                anos_input = layout.itemAt(3).widget()
+                meses_input = layout.itemAt(5).widget()
 
-                # Validação local dos campos
-                if cargo_input.text().strip() and 0 <= meses_input.value() < 12:
-                    experiencias.append((
-                        cargo_input.text().strip().upper(),
-                        anos_input.value(),
-                        meses_input.value()
-                    ))
-                else:
-                    QMessageBox.warning(self, "Erro", "Experiência inválida. Verifique os campos de cargo, anos e meses.")
+                cargo = cargo_input.text().strip()
+                anos = anos_input.value()
+                meses = meses_input.value()
+
+                if not cargo:
+                    QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: Cargo não pode estar vazio.")
                     return
+
+                if meses < 0 or meses > 11:
+                    QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: Meses deve estar entre 0 e 11.")
+                    return
+
+                # Adiciona a experiência como tupla (cargo, anos, meses)
+                experiencias.append((cargo.upper(), anos, meses))
 
             # Insere os dados no banco
             self.curriculo_model.insert_curriculo(
                 nome=nome,
-                cpf=cpf,
+                cpf=cpf_numerico,
                 sexo=sexo,
                 data_nascimento=data_nascimento,
                 cidade_id=cidade_id,
@@ -330,7 +341,7 @@ class CadastroWidget(QWidget):
                 telefone_extra=telefone_extra,
                 escolaridade=escolaridade,
                 vaga_encaminhada=vaga_encaminhada,
-                tem_ctps=False,  # CTPS não é tratado no formulário atual
+                tem_ctps=any(anos > 0 or meses > 0 for _, anos, meses in experiencias),
                 experiencias=experiencias,
                 servico=servico,
                 primeiro_emprego=primeiro_emprego,
@@ -419,6 +430,3 @@ class CadastroWidget(QWidget):
         """Coloca o foco no campo de Login quando a janela for exibida."""
         self.cpf_input.setFocus()  # Foca no campo "Usuário ou E-mail"
         super().showEvent(event)  # Chama o evento showEvent da classe base
-
-
-
