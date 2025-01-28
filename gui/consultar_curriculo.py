@@ -260,6 +260,7 @@ class ConsultaWidget(QWidget):
                 "Sim": True,
                 "Não": False
             }.get(self.ctps_input.currentText(), None),
+            "cargo": self.cargo_input.text().strip() or None,  # Filtro de cargo adicionado
             "experiencia_min": experiencia_min_meses if experiencia_min_meses > 0 else None,
             "experiencia_max": experiencia_max_meses if experiencia_max_meses > 0 else None,
         }
@@ -362,5 +363,7 @@ class ConsultaWidget(QWidget):
         self.idade_max_input.setValue(0)  # Resetar filtro de idade máxima
         self.primeiro_emprego_input.setCurrentIndex(0)  # Limpar filtro de primeiro emprego
         self.cep_input.clear()  # Limpar filtro de CEP
+        self.cargo_input.clear()  # Limpar filtro de cargo
+        self.ctps_input.setCurrentIndex(0)  # Limpar filtro de CTPS
 
         self.search_curriculos()

@@ -13,6 +13,8 @@ class CurriculoModel:
         """
         Valida se o telefone contém apenas números com 10 ou 11 dígitos.
         """
+        if not telefone:
+            return False
         pattern = r"^\d{10,11}$"
         return re.match(pattern, telefone)
     
@@ -36,6 +38,8 @@ class CurriculoModel:
         """
         Remove caracteres especiais do telefone, deixando apenas os números.
         """
+        if not telefone:
+            return None
         return re.sub(r"\D", "", telefone)
         
     def listar_cidades(self):
@@ -78,7 +82,7 @@ class CurriculoModel:
 
     def fetch_curriculos(self, filtros, limite=10, offset=0):
         """
-        Busca currículos aplicando filtros dinâmicos e paginação.
+        Busca currículos aplicando filtros dinâmicos, ordenação por nome e paginação.
         """
         query = """
             SELECT * FROM filtrar_curriculos(
@@ -101,7 +105,8 @@ class CurriculoModel:
                 %(telefone_extra)s::TEXT, 
                 %(limite)s::INTEGER, 
                 %(offset)s::INTEGER
-            );
+            )
+            ORDER BY nome ASC;  -- Adicionado para ordenar alfabeticamente pelo nome
         """
         params = {
             "nome": filtros.get("nome"),
@@ -119,6 +124,8 @@ class CurriculoModel:
             "cpf": filtros.get("cpf"),
             "cep": filtros.get("cep"),  # Novo filtro
             "primeiro_emprego": filtros.get("primeiro_emprego"),  # Novo filtro
+            "telefone": filtros.get("telefone", ""),  # Garantir que seja string
+            "telefone_extra": filtros.get("telefone_extra", ""),  # Garantir que seja string
             "limite": limite,
             "offset": offset,
         }
