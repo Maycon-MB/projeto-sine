@@ -275,3 +275,38 @@ class CurriculoModel:
             print(f"Erro ao buscar experiências: {e}")
             return []
 
+    def get_curriculos_por_cidade(self):
+        """
+        Retorna um dicionário com a contagem de currículos por cidade.
+        """
+        query = "SELECT ci.nome, COUNT(c.id) FROM curriculo c JOIN cidades ci ON c.cidade_id = ci.id GROUP BY ci.nome;"
+        try:
+            results = self.db.execute_query(query, fetch_all=True)
+            return {row['nome']: row['count'] for row in results}
+        except Exception as e:
+            print(f"Erro ao obter currículos por cidade: {e}")
+            return {}
+
+    def get_escolaridade_distribuicao(self):
+        """
+        Retorna um dicionário com a distribuição de escolaridade.
+        """
+        query = "SELECT escolaridade, COUNT(id) FROM curriculo GROUP BY escolaridade;"
+        try:
+            results = self.db.execute_query(query, fetch_all=True)
+            return {row['escolaridade']: row['count'] for row in results}
+        except Exception as e:
+            print(f"Erro ao obter distribuição de escolaridade: {e}")
+            return {}
+
+    def get_top_cargos(self, limit=5):
+        """
+        Retorna os cargos mais populares com base na contagem de currículos.
+        """
+        query = "SELECT cargo, COUNT(id_curriculo) FROM experiencias GROUP BY cargo ORDER BY COUNT(id_curriculo) DESC LIMIT %s;"
+        try:
+            results = self.db.execute_query(query, (limit,), fetch_all=True)
+            return {row['cargo']: row['count'] for row in results}
+        except Exception as e:
+            print(f"Erro ao obter top cargos: {e}")
+            return {}

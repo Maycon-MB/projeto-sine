@@ -15,6 +15,8 @@ from gui.dashboard import DashboardWidget
 from database.connection import DatabaseConnection
 from models.usuario_model import UsuarioModel
 from models.aprovacao_model import AprovacaoModel
+from models.curriculo_model import CurriculoModel  # 🔥 Importando o CurriculoModel
+
 
 
 class MainWindow(QMainWindow):
@@ -26,11 +28,14 @@ class MainWindow(QMainWindow):
         # Carregar configurações salvas
         config = ConfiguracoesWidget.load_configurations()
         self.current_theme = config.get("theme", "light")
-        self.resolution = config.get("resolution", "1200x600")
+        self.resolution = config.get("resolution", "1920x1080")
 
-        # Aplicar resolução salva
+        # Configurações do tamanho da janela (não será usado para maximizar a janela, apenas salvar a resolução)
         width, height = map(int, self.resolution.split("x"))
-        self.resize(width, height)
+        self.resize(width, height)  # Aplica a resolução salva, mas com a intenção de maximizar depois
+
+        # Garantir que a janela sempre será maximizada ao iniciar
+        self.showMaximized()  # Aqui é onde você garante que a janela será maximizada
 
         # Diretório base do projeto
         self.base_dir = Path(__file__).resolve().parent
@@ -43,6 +48,9 @@ class MainWindow(QMainWindow):
         # Inicializar modelo de aprovações
         self.db_connection = db_connection
         self.aprovacao_model = AprovacaoModel(self.db_connection)
+
+        self.curriculo_model = CurriculoModel(self.db_connection)  # ✅ Criando instância correta
+
 
         # Configuração do widget central
         central_widget = QWidget()
@@ -141,7 +149,7 @@ class MainWindow(QMainWindow):
         # Adiciona a tela de Dashboard como "Home"
         self.dashboard_widget = DashboardWidget(
             self.usuario_model,
-            self.aprovacao_model,
+            self.curriculo_model,
             self._navigate,
             usuario_logado['tipo_usuario'],  # Tipo do usuário
             usuario_logado['id'],  # Passa o ID do usuário logado
@@ -157,7 +165,8 @@ class MainWindow(QMainWindow):
         self.content_area.addWidget(self.consulta_widget)
 
         # Passa a referência de MainWindow ao ConfiguracoesWidget
-        self.configuracoes_widget = ConfiguracoesWidget(self.current_theme, self.apply_theme, self)
+        self.configuracoes_widget = ConfiguracoesWidget(self)
+        self.configuracoes_widget.apply_theme(self.current_theme)  # Aplica o tema na inicialização
         self.content_area.addWidget(self.configuracoes_widget)
 
         # ✅ Adiciona a content_area ao layout
@@ -167,7 +176,6 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(body_layout)
 
         self._navigate("Home")
-        self.apply_theme(self.current_theme)
 
         # Atualiza o contador de notificações periodicamente
         self._update_notification_count()
@@ -219,35 +227,6 @@ class MainWindow(QMainWindow):
             self.content_area.setCurrentWidget(self.consulta_widget)
         elif screen_name == "Configurações":
             self.content_area.setCurrentWidget(self.configuracoes_widget)
-
-    def apply_theme(self, theme):
-        self.current_theme = theme
-        if theme == "dark":
-            self.setStyleSheet("""
-                QMainWindow { background-color: #121212; }
-                QWidget { background-color: #1E1E1E; color: white; }
-                QPushButton {
-                    background-color: #333; 
-                    color: white; 
-                    border-radius: 5px; 
-                    padding: 10px;
-                }
-                QPushButton:hover { background-color: #555; }
-                QPushButton:checked { background-color: #0073CF; }
-            """)
-        else:
-            self.setStyleSheet("""
-                QMainWindow { background-color: white; }
-                QWidget { background-color: #b0c4de; color: black; }
-                QPushButton {
-                    background-color: #e0e0e0; 
-                    color: black; 
-                    border-radius: 5px; 
-                    padding: 10px;
-                }
-                QPushButton:hover { background-color: #dcdcdc; }
-                QPushButton:checked { background-color: #0073CF; color: white; }
-            """)
 
     def _button_stylesheet(self):
         return """

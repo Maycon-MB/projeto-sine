@@ -82,39 +82,45 @@ class CadastroWidget(QWidget):
         form_layout.addWidget(experiencia_label, 9, 0, 1, 2)
 
         # Checkbox de Primeiro Emprego
-        self.primeiro_emprego_input = QCheckBox("PRIMEIRO EMPREGO")
-        form_layout.addWidget(QLabel("PRIMEIRO EMPREGO:"), 10, 0)
+        self.primeiro_emprego_input = QCheckBox("")
+        form_layout.addWidget(QLabel("PRIMEIRO EMPREGO / JOVEM APRENDIZ :"), 10, 0)
         form_layout.addWidget(self.primeiro_emprego_input, 10, 1)
 
         # Layout para experiências
         self.experiencias_layout = QVBoxLayout()
         form_layout.addLayout(self.experiencias_layout, 11, 0, 1, 2)
 
-        self.add_experiencia_button = QPushButton("ADICIONAR EXPERIÊNCIA")
+        # Ajustando o botão "ADICIONAR EXPERIÊNCIA"
+        self.add_experiencia_button = QPushButton(" + ADICIONAR EXPERIÊNCIA")
+        self.add_experiencia_button.setFixedSize(220, 40)  # Define tamanho fixo menor
         self.add_experiencia_button.clicked.connect(self.add_experiencia)
         form_layout.addWidget(self.add_experiencia_button, 12, 0, 1, 2)
 
         self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 13)
 
-        self.vaga_encaminhada_input = QCheckBox("VAGA ENCAMINHADA")
-        form_layout.addWidget(QLabel("ENCAMINHADO:"), 14, 0)
+        self.vaga_encaminhada_input = QCheckBox("")
+        form_layout.addWidget(QLabel("VAGA ENCAMINHADA :"), 14, 0)
         form_layout.addWidget(self.vaga_encaminhada_input, 14, 1)
 
         main_layout.addLayout(form_layout)
 
-        # Botões de ação
-        button_layout = QHBoxLayout()
+
         self.cadastrar_button = QPushButton("CADASTRAR")
         self.cadastrar_button.clicked.connect(self.cadastrar_dados)
+        self.cadastrar_button.setFixedSize(320, 60)  # Define um tamanho menor
         self.cadastrar_button.setStyleSheet("background-color: #0073CF; color: white; padding: 10px; font-size: 16px;")
         self.cadastrar_button.installEventFilter(self)
-        button_layout.addWidget(self.cadastrar_button)
 
         self.limpar_button = QPushButton("LIMPAR")
         self.limpar_button.clicked.connect(self.limpar_formulario)
+        self.limpar_button.setFixedSize(320, 60)  # Define um tamanho menor
         self.limpar_button.setStyleSheet("background-color: #dcdcdc; color: black; padding: 10px; font-size: 16px;")
-        button_layout.addWidget(self.limpar_button)
 
+        # Organizando os botões lado a lado
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.cadastrar_button)
+        button_layout.addWidget(self.limpar_button)
+        button_layout.setAlignment(Qt.AlignCenter)  # Centraliza os botões
         main_layout.addLayout(button_layout)
 
         # Adiciona experiência inicial

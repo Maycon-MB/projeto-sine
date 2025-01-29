@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QGroupBox
 )
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHeaderView
 from models.curriculo_model import CurriculoModel
 from gui.editar_curriculo import EditDialog
@@ -38,11 +39,13 @@ class ConsultaWidget(QWidget):
         button_layout.setAlignment(Qt.AlignCenter)
 
         self.search_button = QPushButton("Buscar")
+        self.search_button.setIcon(QIcon("assets/icons/search-icon.svg"))
         self.search_button.setStyleSheet(self._button_stylesheet())
         self.search_button.clicked.connect(self.search_curriculos)
         button_layout.addWidget(self.search_button)
 
         self.clear_button = QPushButton("Limpar Filtros")
+        self.clear_button.setIcon(QIcon("assets/icons/clear-icon.svg"))
         self.clear_button.setStyleSheet(self._button_stylesheet())
         self.clear_button.clicked.connect(self.clear_filters)
         button_layout.addWidget(self.clear_button)
@@ -65,7 +68,11 @@ class ConsultaWidget(QWidget):
 
         # Total de resultados e paginação
         pagination_layout = QHBoxLayout()
+
         self.previous_button = QPushButton("<< Anterior")
+        self.previous_button.setStyleSheet(self._button_stylesheet())  # Aplica o mesmo estilo
+        self.previous_button.setMinimumWidth(100)  # Mesmo tamanho do botão "Buscar"
+        self.previous_button.setFixedHeight(36)  # Mesmo tamanho do botão "Buscar"
         self.previous_button.clicked.connect(self.previous_page)
         self.previous_button.setEnabled(False)
         pagination_layout.addWidget(self.previous_button)
@@ -74,11 +81,15 @@ class ConsultaWidget(QWidget):
         pagination_layout.addWidget(self.page_label, alignment=Qt.AlignCenter)
 
         self.next_button = QPushButton("Próximo >>")
+        self.next_button.setStyleSheet(self._button_stylesheet())  # Aplica o mesmo estilo
+        self.next_button.setMinimumWidth(100)  # Mesmo tamanho do botão "Buscar"
+        self.next_button.setFixedHeight(36)  # Mesmo tamanho do botão "Buscar"
         self.next_button.clicked.connect(self.next_page)
         self.next_button.setEnabled(False)
         pagination_layout.addWidget(self.next_button)
 
         layout.addLayout(pagination_layout)
+
 
         # Total de resultados
         self.total_label = QLabel("TOTAL DE CURRÍCULOS: 0")
@@ -103,6 +114,7 @@ class ConsultaWidget(QWidget):
 
         filter_layout.addWidget(QLabel("SEXO:"), 2, 0)
         self.sexo_input = QComboBox()
+        self.sexo_input.setEditable(True)
         self.sexo_input.addItems(["", "MASCULINO", "FEMININO"])
         filter_layout.addWidget(self.sexo_input, 2, 1)
 
@@ -126,6 +138,7 @@ class ConsultaWidget(QWidget):
 
         filter_layout.addWidget(QLabel("CIDADE:"), 1, 2)
         self.cidade_input = QComboBox()
+        self.cidade_input.setEditable(True)
         self.cidade_input.addItem("")
         cidades = self.curriculo_model.listar_cidades()
         self.cidade_input.addItems(cidades)
@@ -143,6 +156,7 @@ class ConsultaWidget(QWidget):
 
         filter_layout.addWidget(QLabel("ESCOLARIDADE:"), 4, 2)
         self.escolaridade_input = QComboBox()
+        self.escolaridade_input.setEditable(True)
         self.escolaridade_input.addItems([
             "",
             "ENSINO FUNDAMENTAL INCOMPLETO",
@@ -165,16 +179,19 @@ class ConsultaWidget(QWidget):
 
         filter_layout.addWidget(QLabel("SERVIÇO:"), 1, 4)
         self.servico_input = QComboBox()
+        self.servico_input.setEditable(True)
         self.servico_input.addItems(["", "SINE", "MANUAL"])
         filter_layout.addWidget(self.servico_input, 1, 5)
 
         filter_layout.addWidget(QLabel("VAGA ENCAMINHADA:"), 2, 4)
         self.vaga_encaminhada_input = QComboBox()
+        self.vaga_encaminhada_input.setEditable(True)
         self.vaga_encaminhada_input.addItems(["", "Sim", "Não"])
         filter_layout.addWidget(self.vaga_encaminhada_input, 2, 5)
 
         filter_layout.addWidget(QLabel("PRIMEIRO EMPREGO:"), 3, 4)
         self.primeiro_emprego_input = QComboBox()
+        self.primeiro_emprego_input.setEditable(True)
         self.primeiro_emprego_input.addItems(["", "Sim", "Não"])
         filter_layout.addWidget(self.primeiro_emprego_input, 3, 5)
 
@@ -201,6 +218,7 @@ class ConsultaWidget(QWidget):
 
         filter_layout.addWidget(QLabel("CTPS:"), 4, 6)
         self.ctps_input = QComboBox()
+        self.ctps_input.setEditable(True)
         self.ctps_input.addItems(["", "Sim", "Não"])
         filter_layout.addWidget(self.ctps_input, 4, 7)
 
@@ -219,8 +237,8 @@ class ConsultaWidget(QWidget):
                 padding: 8px 12px;  /* Botão menor, com menos espaçamento interno */
                 outline: none;
                 width: 100px;  /* Largura fixa para os botões */
-                min-width: 100px;  /* Largura mínima do botão */
-                max-width: 120px;  /* Máxima largura para os botões, se necessário */
+                min-width: 120px;  /* Largura mínima do botão */
+                max-width: 160px;  /* Máxima largura para os botões, se necessário */
             }
             QPushButton:hover {
                 background-color: #367dba;

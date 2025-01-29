@@ -1,16 +1,17 @@
-# gui/dashboard.py
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QHBoxLayout, QPushButton
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtCore import QSize, Qt
+from models.curriculo_model import CurriculoModel
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import matplotlib.pyplot as plt
+import numpy as np
 
 class DashboardWidget(QWidget):
-    def __init__(self, usuario_model, aprovacao_model, navigate_callback, tipo_usuario=None, usuario_id=None, cidade_admin=None):
+    def __init__(self, usuario_model, curriculo_model, navigate_callback, tipo_usuario=None, usuario_id=None, cidade_admin=None):
         super().__init__()
         self.usuario_model = usuario_model
-        self.aprovacao_model = aprovacao_model
+        self.curriculo_model = curriculo_model
         self.navigate_callback = navigate_callback
-
-        # Guardando os novos parâmetros
         self.tipo_usuario = tipo_usuario
         self.usuario_id = usuario_id
         self.cidade_admin = cidade_admin
@@ -26,22 +27,13 @@ class DashboardWidget(QWidget):
         title.setAlignment(Qt.AlignCenter)
         layout.addWidget(title)
 
-        # Indicadores rápidos
-        indicators_layout = QHBoxLayout()
-
-        total_curriculos = self._create_info_card("Total de Currículos", self.usuario_model.total_curriculos())
+        # Gráficos Estatísticos
+        stats_layout = QVBoxLayout()
+        stats_layout.addWidget(self.create_bar_chart("Currículos por Cidade", self.curriculo_model.get_curriculos_por_cidade()))
+        stats_layout.addWidget(self.create_pie_chart("Distribuição de Escolaridade", self.curriculo_model.get_escolaridade_distribuicao()))
+        stats_layout.addWidget(self.create_bar_chart("Cargos Mais Populares", self.curriculo_model.get_top_cargos()))
         
-        # Passando o tipo_usuario ao método total_pendentes
-        pendentes = self._create_info_card("Aprovações Pendentes", self.aprovacao_model.total_pendentes(self.tipo_usuario))
-        
-        # Passando o usuario_id ao método total_notificacoes
-        notificacoes = self._create_info_card("Notificações", self.aprovacao_model.total_notificacoes(self.usuario_id))  
-
-        indicators_layout.addWidget(total_curriculos)
-        indicators_layout.addWidget(pendentes)
-        indicators_layout.addWidget(notificacoes)
-
-        layout.addLayout(indicators_layout)
+        layout.addLayout(stats_layout)
 
         # Botões de Acesso Rápido
         botoes_layout = QHBoxLayout()
@@ -58,23 +50,28 @@ class DashboardWidget(QWidget):
 
         botoes_layout.addWidget(btn_cadastrar)
         botoes_layout.addWidget(btn_consultar)
-
         layout.addLayout(botoes_layout)
+
         self.setLayout(layout)
 
-    def _create_info_card(self, title, value):
-        card = QWidget()
-        layout = QVBoxLayout()
-        title_label = QLabel(title)
-        title_label.setAlignment(Qt.AlignCenter)
-        title_label.setFont(QFont("Arial", 12, QFont.Bold))
+    def create_bar_chart(self, title, data):
+        fig, ax = plt.subplots()
+        labels, values = zip(*data.items()) if data else ([], [])
+        
+        ax.bar(range(len(labels)), values, color='royalblue')
+        ax.set_title(title)
+        
+        ax.set_xticks(range(len(labels)))  # Define os ticks antes dos labels
+        ax.set_xticklabels(labels, rotation=45, ha='right')
+        
+        canvas = FigureCanvas(fig)
+        return canvas
 
-        value_label = QLabel(str(value))
-        value_label.setAlignment(Qt.AlignCenter)
-        value_label.setFont(QFont("Arial", 24, QFont.Bold))
-        value_label.setStyleSheet("color: #0056A1;")
-
-        layout.addWidget(title_label)
-        layout.addWidget(value_label)
-        card.setLayout(layout)
-        return card
+    def create_pie_chart(self, title, data):
+        fig, ax = plt.subplots()
+        labels, values = zip(*data.items()) if data else ([], [])
+        ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=140, colors=plt.cm.Paired.colors)
+        ax.set_title(title)
+        
+        canvas = FigureCanvas(fig)
+        return canvas
