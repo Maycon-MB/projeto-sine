@@ -215,31 +215,38 @@ class LoginCadastroDialog(QDialog):
             return
 
         try:
-            # Busca as informações do usuário pelo login (usuário ou email)
             usuario_info = self.usuario_model.buscar_usuario_por_login(usuario)
 
-            if usuario_info and bcrypt.checkpw(senha.encode(), usuario_info['senha'].encode()):
-                QMessageBox.information(self, "Sucesso", "Login realizado com sucesso!")
+            if usuario_info:
+                senha_hash_armazenada = usuario_info['senha']
 
-                # Adiciona 'tipo_usuario' ao dicionário de usuário logado
-                self.usuario_logado = {
-                    'id': usuario_info['id'],
-                    'usuario': usuario_info['usuario'],
-                    'email': usuario_info['email'],
-                    'cidade_id': usuario_info['cidade_id'],
-                    'tipo_usuario': usuario_info['tipo_usuario'],  # Certifique-se de que este campo está no banco
-                }
+                # 🚀 Certificar que a senha armazenada está no formato correto para comparação
+                if isinstance(senha_hash_armazenada, str):
+                    senha_hash_armazenada = senha_hash_armazenada.encode('utf-8')
 
-                self.accept()
-            else:
-                QMessageBox.warning(self, "Erro", "Usuário ou senha inválidos.")
+                if bcrypt.checkpw(senha.encode('utf-8'), senha_hash_armazenada):
+                    QMessageBox.information(self, "Sucesso", "Login realizado com sucesso!")
+
+                    self.usuario_logado = {
+                        'id': usuario_info['id'],
+                        'usuario': usuario_info['usuario'],
+                        'email': usuario_info['email'],
+                        'cidade_id': usuario_info['cidade_id'],
+                        'tipo_usuario': usuario_info['tipo_usuario'],
+                    }
+
+                    self.accept()
+                    return
+
+            QMessageBox.warning(self, "Erro", "Usuário ou senha inválidos.")
+
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao realizar login: {e}")
 
     def handle_cadastro(self):
         nome = self.nome_input.text().strip()
-        usuario = self.usuario_input.text().strip()
-        cidade_id = self.cidade_combobox.currentData()  # Recupera o ID da cidade selecionada
+        usuario = self.usuario_input.text().strip().upper()
+        cidade_id = self.cidade_combobox.currentData()
         email = self.cadastro_email_input.text().strip()
         senha = self.cadastro_password_input.text()
         confirmacao = self.confirm_password_input.text()
@@ -248,33 +255,17 @@ class LoginCadastroDialog(QDialog):
             QMessageBox.warning(self, "Erro", "Todos os campos devem ser preenchidos.")
             return
 
-        if cidade_id is None or cidade_id == "Selecione uma cidade":
-            QMessageBox.warning(self, "Erro", "Por favor, selecione uma cidade válida.")
-            return
-
-        if not self.is_valid_email(email):
-            QMessageBox.warning(self, "Erro", "E-mail inválido.")
-            return
-
         if senha != confirmacao:
             QMessageBox.warning(self, "Erro", "As senhas não conferem.")
             return
 
-        if not re.match(r"^[a-zA-Z0-9_]+$", usuario):
-            QMessageBox.warning(self, "Erro", "O nome de usuário contém caracteres inválidos.")
-            return
-
         try:
-            if self.usuario_model.verificar_email_existente(email):
-                QMessageBox.warning(self, "Erro", "E-mail já cadastrado.")
-                return
+            # 🔥 Gerar e imprimir o hash para depuração
+            senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+            print(f"🔍 Hash gerado no cadastro: {senha_hash}")
 
-            if self.usuario_model.verificar_usuario_existente(usuario):
-                QMessageBox.warning(self, "Erro", "Usuário já cadastrado.")
-                return
+            self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade_id, "comum")
 
-            senha_hash = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade_id, "comum")  # Passa cidade_id
             QMessageBox.information(self, "Cadastro", "Cadastro realizado com sucesso!")
             self.close()
         except Exception as e:

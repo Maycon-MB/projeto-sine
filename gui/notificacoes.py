@@ -10,7 +10,7 @@ from PySide6.QtCore import Qt
 class TelaNotificacoes(QDialog):
     def __init__(self, aprovacao_model, usuario_id, tipo_usuario):
         super().__init__()
-        self.model = aprovacao_model  # Atribuindo o parâmetro 'aprovacao_model' a 'self.model'
+        self.model = aprovacao_model  
         self.usuario_id = usuario_id
         self.tipo_usuario = tipo_usuario
         self.setWindowTitle("Notificações")
@@ -47,8 +47,6 @@ class TelaNotificacoes(QDialog):
             ["Selecionar", "Usuário", "Email", "Cidade", "Data de Cadastro", "Status", "Ações"]
         )
         self.tabela_notificacoes.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tabela_notificacoes.horizontalHeader().setSectionResizeMode(6, QHeaderView.Stretch)  # Só a última coluna
-        self.tabela_notificacoes.setSortingEnabled(True)  # Permitir ordenação por colunas
         self.layout.addWidget(self.tabela_notificacoes)
 
         # Botões de paginação e ações em massa
@@ -82,11 +80,9 @@ class TelaNotificacoes(QDialog):
 
         self.tabela_notificacoes.setColumnWidth(6, 200)  # Define largura mínima para a coluna "Ações"
 
-
-    def carregar_notificacoes(self): 
+    def carregar_notificacoes(self):
         """
         Carrega as notificações com base no filtro, busca e paginação.
-        Exibe uma mensagem informativa se não houver notificações.
         """
         try:
             filtro_status = self.filtro_combo.currentText()
@@ -94,7 +90,6 @@ class TelaNotificacoes(QDialog):
             if filtro_status == "Todos":
                 filtro_status = None
 
-            # Obter notificações e total
             notificacoes, total_notificacoes = self.model.listar_aprovacoes_paginadas(
                 usuario_id=self.usuario_id,
                 tipo_usuario=self.tipo_usuario,
@@ -104,38 +99,21 @@ class TelaNotificacoes(QDialog):
                 page_size=self.page_size
             )
 
-            # Verificar se há notificações
-            if total_notificacoes == 0:
-                # Limpar tabela e exibir mensagem
-                self.tabela_notificacoes.setRowCount(0)
-                self.tabela_notificacoes.setRowCount(1)
-                mensagem_item = QTableWidgetItem("Não há notificações no momento.")
-                mensagem_item.setTextAlignment(Qt.AlignCenter)
-                self.tabela_notificacoes.setItem(0, 0, mensagem_item)
-                self.page_label.setText(f"Página: 0/0")
-                self.btn_anterior.setEnabled(False)
-                self.btn_proxima.setEnabled(False)
-                return
-
-            # Atualizar tabela e paginação
-            self.total_pages = (total_notificacoes + self.page_size - 1) // self.page_size
+            self.total_pages = max(1, (total_notificacoes + self.page_size - 1) // self.page_size)
             self.tabela_notificacoes.setRowCount(len(notificacoes))
 
             for row, notificacao in enumerate(notificacoes):
-                # Checkbox para seleção
                 checkbox = QTableWidgetItem()
                 checkbox.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
                 checkbox.setCheckState(Qt.Unchecked)
                 self.tabela_notificacoes.setItem(row, 0, checkbox)
 
-                # Dados da notificação
                 self.tabela_notificacoes.setItem(row, 1, self._criar_celula(notificacao["usuario"]))
-                self.tabela_notificacoes.item(row, 1).setData(Qt.UserRole, notificacao["id"])  # Aqui você armazena o ID
+                self.tabela_notificacoes.item(row, 1).setData(Qt.UserRole, notificacao["id"])
                 self.tabela_notificacoes.setItem(row, 2, self._criar_celula(notificacao["email"]))
                 self.tabela_notificacoes.setItem(row, 3, self._criar_celula(notificacao["cidade"]))
                 self.tabela_notificacoes.setItem(row, 4, self._criar_celula(notificacao["criado_em"]))
 
-                # Status com cores
                 status_item = self._criar_celula(notificacao["status_aprovacao"])
                 if notificacao["status_aprovacao"] == "pendente":
                     status_item.setBackground(Qt.yellow)
@@ -145,36 +123,21 @@ class TelaNotificacoes(QDialog):
                     status_item.setBackground(Qt.red)
                 self.tabela_notificacoes.setItem(row, 5, status_item)
 
-                # Ações
                 btn_aprovar = QPushButton("✔")
                 btn_aprovar.setToolTip("Aprovar")
                 btn_aprovar.setEnabled(notificacao["status_aprovacao"] == "pendente")
                 btn_aprovar.clicked.connect(lambda _, id=notificacao["id"]: self.aprovar(id))
+
                 btn_rejeitar = QPushButton("✖")
                 btn_rejeitar.setToolTip("Rejeitar")
                 btn_rejeitar.setEnabled(notificacao["status_aprovacao"] == "pendente")
                 btn_rejeitar.clicked.connect(lambda _, id=notificacao["id"]: self.rejeitar(id))
 
-                self.tabela_notificacoes.setCellWidget(
-                    row, 6, self._criar_widget_acoes(btn_aprovar, btn_rejeitar)
-                )
+                self.tabela_notificacoes.setCellWidget(row, 6, self._criar_widget_acoes(btn_aprovar, btn_rejeitar))
 
-            # Atualizar página e botões de navegação
             self.page_label.setText(f"Página: {self.page}/{self.total_pages}")
-            self.btn_anterior.setEnabled(self.page > 1)
-            self.btn_proxima.setEnabled(self.page < self.total_pages)
-
         except Exception as e:
-            # Tratamento de erros reais
             logging.error(f"Erro ao carregar notificações: {str(e)}")
-            self.tabela_notificacoes.setRowCount(0)
-            self.tabela_notificacoes.setRowCount(1)
-            mensagem_item = QTableWidgetItem("Erro ao carregar notificações. Tente novamente mais tarde.")
-            mensagem_item.setTextAlignment(Qt.AlignCenter)
-            self.tabela_notificacoes.setItem(0, 0, mensagem_item)
-            self.page_label.setText(f"Página: 0/0")
-            self.btn_anterior.setEnabled(False)
-            self.btn_proxima.setEnabled(False)
 
     def _criar_celula(self, texto):
         item = QTableWidgetItem(str(texto))
@@ -194,27 +157,49 @@ class TelaNotificacoes(QDialog):
         return widget
 
     def aprovar(self, aprovacao_id):
-        if QMessageBox.question(self, "Confirmação", "Aprovar esta solicitação?") == QMessageBox.Yes:
-            try:
-                self.model.atualizar_status_aprovacao(
-                    aprovacao_id, "aprovado", usuario_id=self.usuario_id, tipo_usuario=self.tipo_usuario
-                )
-                QMessageBox.information(self, "Sucesso", "Solicitação aprovada!")
-                self.carregar_notificacoes()
-            except Exception as e:
-                QMessageBox.critical(self, "Erro", f"Erro ao aprovar: {str(e)}")
+        """
+        Exibe um diálogo para selecionar o tipo de usuário antes de aprovar.
+        """
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Aprovar Usuário")
+        layout = QVBoxLayout()
 
+        label = QLabel("Selecione o nível do usuário:")
+        tipo_combo = QComboBox()
+        tipo_combo.addItems(["master", "admin", "comum"])
+
+        btn_confirmar = QPushButton("Confirmar")
+        btn_confirmar.clicked.connect(lambda: self._confirmar_aprovacao(dialog, aprovacao_id, tipo_combo.currentText()))
+
+        layout.addWidget(label)
+        layout.addWidget(tipo_combo)
+        layout.addWidget(btn_confirmar)
+        dialog.setLayout(layout)
+        dialog.exec()
+
+    def _confirmar_aprovacao(self, dialog, aprovacao_id, tipo_usuario_novo):
+        """
+        Confirma a aprovação e define o nível do usuário.
+        """
+        try:
+            self.model.aprovar_usuario(aprovacao_id, self.usuario_id, self.tipo_usuario, tipo_usuario_novo)
+            QMessageBox.information(self, "Sucesso", f"Usuário aprovado como {tipo_usuario_novo}!")
+            self.carregar_notificacoes()
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao aprovar: {str(e)}")
+        finally:
+            dialog.accept()
 
     def rejeitar(self, aprovacao_id):
-        if QMessageBox.question(self, "Confirmação", "Rejeitar esta solicitação?") == QMessageBox.Yes:
-            try:
-                self.model.atualizar_status_aprovacao(
-                    aprovacao_id, "rejeitado", usuario_id=self.usuario_id, tipo_usuario=self.tipo_usuario
-                )
-                QMessageBox.information(self, "Sucesso", "Solicitação rejeitada!")
-                self.carregar_notificacoes()
-            except Exception as e:
-                QMessageBox.critical(self, "Erro", f"Erro ao rejeitar: {str(e)}")
+        """
+        Rejeita a solicitação de usuário.
+        """
+        try:
+            self.model.rejeitar_usuario(aprovacao_id, self.usuario_id, self.tipo_usuario)
+            QMessageBox.information(self, "Sucesso", "Solicitação rejeitada!")
+            self.carregar_notificacoes()
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao rejeitar: {str(e)}")
 
     def aprovar_selecionados(self):
         self._aplicar_acao_em_selecionados("aprovado")

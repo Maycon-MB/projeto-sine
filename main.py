@@ -175,7 +175,7 @@ class MainWindow(QMainWindow):
 
         main_layout.addLayout(body_layout)
 
-        self._navigate("Home")
+        self._navigate("Página Inicial")
 
         # Atualiza o contador de notificações periodicamente
         self._update_notification_count()

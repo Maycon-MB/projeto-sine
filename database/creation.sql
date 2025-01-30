@@ -140,6 +140,7 @@ CREATE TABLE public.curriculo (
     vaga_encaminhada BOOLEAN DEFAULT FALSE,
     cep CHAR(8) CHECK (cep ~ '^\d{8}$'), -- Nova coluna: CEP
     primeiro_emprego BOOLEAN DEFAULT FALSE, -- Nova coluna: Primeiro Emprego/Jovem Aprendiz
+    data_cadastro TIMESTAMP DEFAULT NOW(), -- Nova coluna: Armazena a data/hora de criação do registro
     CONSTRAINT fk_curriculo_cidade FOREIGN KEY (cidade_id) REFERENCES public.cidades (id)
 )
 TABLESPACE pg_default;
@@ -193,6 +194,7 @@ TABLESPACE pg_default;
 ALTER TABLE public.servicos
     OWNER TO postgres;
 
+-- Tabela: usuarios
 CREATE TABLE public.usuarios (
     id SERIAL PRIMARY KEY,
     usuario VARCHAR(50) NOT NULL,

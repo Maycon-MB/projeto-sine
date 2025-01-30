@@ -275,11 +275,25 @@ class CurriculoModel:
             print(f"Erro ao buscar experiências: {e}")
             return []
 
-    def get_curriculos_por_cidade(self):
+    def get_curriculos_por_cidade(self, filtro=None):
         """
         Retorna um dicionário com a contagem de currículos por cidade.
+        Se um filtro for passado, aplica a lógica correspondente.
         """
-        query = "SELECT ci.nome, COUNT(c.id) FROM curriculo c JOIN cidades ci ON c.cidade_id = ci.id GROUP BY ci.nome;"
+        query = "SELECT ci.nome, COUNT(c.id) FROM curriculo c JOIN cidades ci ON c.cidade_id = ci.id"
+
+        # Aplicar filtro de data (PostgreSQL)
+        filtros = {
+            "Últimos 30 dias": " WHERE c.data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " WHERE c.data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " WHERE c.data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+
+        if filtro in filtros:
+            query += filtros[filtro]
+
+        query += " GROUP BY ci.nome;"
+        
         try:
             results = self.db.execute_query(query, fetch_all=True)
             return {row['nome']: row['count'] for row in results}
@@ -287,26 +301,118 @@ class CurriculoModel:
             print(f"Erro ao obter currículos por cidade: {e}")
             return {}
 
-    def get_escolaridade_distribuicao(self):
+    def get_escolaridade_distribuicao(self, filtro=None):
         """
-        Retorna um dicionário com a distribuição de escolaridade.
+        Retorna um dicionário com a distribuição de escolaridade, aplicando filtros se necessário.
         """
-        query = "SELECT escolaridade, COUNT(id) FROM curriculo GROUP BY escolaridade;"
+        query = "SELECT escolaridade, COUNT(id) AS total FROM curriculo"
+        
+        # Aplicar filtro de data (PostgreSQL)
+        filtros = {
+            "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " WHERE data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+        
+        if filtro in filtros:
+            query += filtros[filtro]
+        
+        query += " GROUP BY escolaridade;"
+
         try:
             results = self.db.execute_query(query, fetch_all=True)
-            return {row['escolaridade']: row['count'] for row in results}
+            return {row['escolaridade']: row['total'] for row in results}
         except Exception as e:
             print(f"Erro ao obter distribuição de escolaridade: {e}")
             return {}
 
-    def get_top_cargos(self, limit=5):
+    def get_top_cargos(self, filtro=None, limit=5):
         """
-        Retorna os cargos mais populares com base na contagem de currículos.
+        Retorna os cargos mais populares com base na contagem de currículos, aplicando filtros se necessário.
         """
-        query = "SELECT cargo, COUNT(id_curriculo) FROM experiencias GROUP BY cargo ORDER BY COUNT(id_curriculo) DESC LIMIT %s;"
+        query = """
+        SELECT experiencias.cargo, COUNT(experiencias.id_curriculo) AS total
+        FROM experiencias
+        """
+        
+        # Aplicar filtro de data baseado na tabela de currículos (PostgreSQL)
+        filtros = {
+            "Últimos 30 dias": " JOIN curriculo c ON experiencias.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " JOIN curriculo c ON experiencias.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " JOIN curriculo c ON experiencias.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+        
+        if filtro in filtros:
+            query += filtros[filtro]
+        
+        query += " GROUP BY experiencias.cargo ORDER BY total DESC LIMIT %s;"
+
         try:
             results = self.db.execute_query(query, (limit,), fetch_all=True)
-            return {row['cargo']: row['count'] for row in results}
+            return {row['cargo']: row['total'] for row in results}
         except Exception as e:
             print(f"Erro ao obter top cargos: {e}")
+            return {}
+
+    def get_primeiro_emprego_distribuicao(self, filtro=None):
+        """
+        Retorna a distribuição entre pessoas que estão buscando o primeiro emprego e as que já possuem experiência, aplicando filtros se necessário.
+        """
+        query = """
+        SELECT 
+            CASE 
+                WHEN primeiro_emprego THEN 'Primeiro Emprego'
+                ELSE 'Com Experiência'
+            END AS categoria,
+            COUNT(*) AS total
+        FROM curriculo
+        """
+
+        # Aplicar filtro de data (PostgreSQL)
+        filtros = {
+            "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " WHERE data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+        
+        if filtro in filtros:
+            query += filtros[filtro]
+        
+        query += " GROUP BY categoria;"
+
+        try:
+            results = self.db.execute_query(query, fetch_all=True)
+            return {row['categoria']: row['total'] for row in results}
+        except Exception as e:
+            print(f"Erro ao obter distribuição de primeiro emprego: {e}")
+            return {}
+
+    def get_experiencia_por_idade(self, filtro=None):
+        """
+        Retorna um dicionário com a distribuição de experiência por idade.
+        """
+        query = """
+        SELECT
+            FLOOR(DATE_PART('year', AGE(c.data_nascimento))) AS idade,
+            SUM(e.anos_experiencia) AS experiencia_total
+        FROM curriculo c
+        JOIN experiencias e ON c.id = e.id_curriculo
+        """
+        
+        filtros = {
+            "Últimos 30 dias": " WHERE c.data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " WHERE c.data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " WHERE c.data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+        
+        if filtro in filtros:
+            query += filtros[filtro]
+        
+        query += " GROUP BY idade ORDER BY idade;"
+        
+        try:
+            results = self.db.execute_query(query, fetch_all=True)
+            return {row['idade']: row['experiencia_total'] for row in results}
+        except Exception as e:
+            print(f"Erro ao obter distribuição de experiência por idade: {e}")
             return {}
