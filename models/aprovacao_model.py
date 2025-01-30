@@ -157,11 +157,68 @@ class AprovacaoModel:
             logging.error(f"Erro ao atualizar status de aprovação: {e}")
             raise RuntimeError("Erro ao atualizar status de aprovação.") from e
 
-    def aprovar_usuario(self, aprovacao_id, usuario_id, tipo_usuario):
-        self.atualizar_status_aprovacao(aprovacao_id, "aprovado", usuario_id, tipo_usuario)
+    def aprovar_usuario(self, aprovacao_id, usuario_id, tipo_usuario, tipo_usuario_novo):
+        """
+        Aprova um usuário e define seu nível (master, admin ou comum).
+        """
+        logging.info(f"Aprovando usuário com ID {aprovacao_id}, alterando tipo para '{tipo_usuario_novo}'")
+        if tipo_usuario == "comum":
+            raise PermissionError("Usuários comuns não podem aprovar outros usuários.")
+
+        if tipo_usuario_novo not in ["master", "admin", "comum"]:
+            raise ValueError("Tipo de usuário inválido. Escolha entre 'master', 'admin' ou 'comum'.")
+
+        try:
+            # Atualiza o status da aprovação
+            self.atualizar_status_aprovacao(aprovacao_id, "aprovado", usuario_id, tipo_usuario)
+
+            # Obtém o usuário associado à aprovação
+            usuario_aprovado = self.obter_aprovacao_por_id(aprovacao_id)
+            if not usuario_aprovado:
+                raise ValueError("Usuário não encontrado para aprovação.")
+
+            usuario_id_aprovado = usuario_aprovado["usuario_id"]
+
+            # Atualiza o nível do usuário aprovado
+            query = """
+                UPDATE usuarios
+                SET tipo_usuario = %s
+                WHERE id = %s;
+            """
+            self.db.execute_query(query, (tipo_usuario_novo, usuario_id_aprovado))
+
+            # Criar notificação para o usuário aprovado
+            descricao = f"Seu cadastro foi aprovado! Você agora tem acesso como {tipo_usuario_novo}."
+            self.criar_notificacao(usuario_id_aprovado, "Aprovação de Cadastro", descricao)
+
+        except Exception as e:
+            logging.error(f"Erro ao aprovar usuário: {e}")
+            raise RuntimeError("Erro ao aprovar usuário.") from e
 
     def rejeitar_usuario(self, aprovacao_id, usuario_id, tipo_usuario):
-        self.atualizar_status_aprovacao(aprovacao_id, "rejeitado", usuario_id, tipo_usuario)
+        """
+        Rejeita um usuário e o notifica.
+        """
+        if tipo_usuario == "comum":
+            raise PermissionError("Usuários comuns não podem rejeitar aprovações.")
+
+        try:
+            self.atualizar_status_aprovacao(aprovacao_id, "rejeitado", usuario_id, tipo_usuario)
+
+            # Obter o usuário rejeitado
+            usuario_rejeitado = self.obter_aprovacao_por_id(aprovacao_id)
+            if not usuario_rejeitado:
+                raise ValueError("Usuário não encontrado para rejeição.")
+
+            usuario_id_rejeitado = usuario_rejeitado["usuario_id"]
+
+            # Criar notificação para o usuário rejeitado
+            descricao = "Seu cadastro foi rejeitado. Caso tenha dúvidas, entre em contato com o suporte."
+            self.criar_notificacao(usuario_id_rejeitado, "Rejeição de Cadastro", descricao)
+
+        except Exception as e:
+            logging.error(f"Erro ao rejeitar usuário: {e}")
+            raise RuntimeError("Erro ao rejeitar usuário.") from e
 
     def obter_aprovacao_por_id(self, aprovacao_id):
         query = """
@@ -171,6 +228,19 @@ class AprovacaoModel:
         """
         result = self.db.execute_query(query, (aprovacao_id,), fetch_one=True)
         return result
+    
+    def criar_notificacao(self, usuario_id, evento, descricao):
+        """
+        Registra uma nova notificação para o usuário.
+        """
+        try:
+            query = """
+            INSERT INTO notificacoes (usuario_id, evento, descricao, criado_em, lido)
+            VALUES (%s, %s, %s, NOW(), FALSE);
+            """
+            self.db.execute_query(query, (usuario_id, evento, descricao))
+        except Exception as e:
+            logging.error(f"Erro ao registrar notificação: {str(e)}")
 
     def total_pendentes(self, tipo_usuario, cidade_admin=None):
         query = "SELECT COUNT(*) FROM aprovacoes WHERE status_aprovacao = 'pendente'"

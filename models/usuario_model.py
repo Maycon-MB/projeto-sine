@@ -38,7 +38,9 @@ class UsuarioModel:
             if self.verificar_usuario_existente(usuario):
                 raise ValueError("Usuário já cadastrado.")
 
-            senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
+            # Gerando o hash da senha
+            senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()  # Retorna uma string
+
             query = """
             INSERT INTO usuarios (usuario, senha, email, cidade_id, tipo_usuario)
             VALUES (%s, %s, %s, %s, %s)
@@ -103,10 +105,24 @@ class UsuarioModel:
             raise
 
     def validar_login(self, usuario, senha):
-        query = "SELECT senha FROM usuarios WHERE usuario = %s OR email = %s"
+        query = "SELECT id, senha FROM usuarios WHERE UPPER(usuario) = %s OR UPPER(email) = %s"
         result = self.db.execute_query(query, (usuario.upper(), usuario.upper()), fetch_one=True)
-        if result and bcrypt.checkpw(senha.encode(), result['senha'].encode()):
+
+        if not result:
+            logging.warning("Usuário ou e-mail não encontrado.")
+            return False
+
+        senha_hash_armazenada = result['senha']
+
+        # Converter senha armazenada para bytes se estiver como string
+        if isinstance(senha_hash_armazenada, str):
+            senha_hash_armazenada = senha_hash_armazenada.encode()
+
+        if bcrypt.checkpw(senha.encode(), senha_hash_armazenada):
+            logging.info(f"Usuário {usuario} autenticado com sucesso.")
             return True
+
+        logging.warning("Senha incorreta.")
         return False
 
     def buscar_usuario_por_login(self, usuario):
@@ -115,7 +131,12 @@ class UsuarioModel:
         FROM usuarios
         WHERE usuario = %s OR email = %s
         """
-        return self.db.execute_query(query, (usuario.upper(), usuario.upper()), fetch_one=True)
+        result = self.db.execute_query(query, (usuario.upper(), usuario.upper()), fetch_one=True)
+        
+        if result:
+            logging.info(f"Usuário encontrado: {result['usuario']}, Senha Hash: {result['senha']}")
+        
+        return result
     
     def total_curriculos(self):
         """Conta o total de currículos cadastrados."""
