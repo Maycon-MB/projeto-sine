@@ -67,13 +67,13 @@ class ConfiguracoesWidget(QWidget):
 
         # Salvar Configurações (Agora está antes do Resetar)
         save_button = QPushButton("Salvar")
-        save_button.setFixedSize(100, 30)  # Define tamanho menor
+        save_button.setFixedSize(100, 40)  # Define tamanho menor
         save_button.clicked.connect(self.save_configurations)
         button_layout.addWidget(save_button)
 
         # Restaurar Configurações
         reset_button = QPushButton("Resetar Configurações")
-        reset_button.setFixedSize(150, 30)  # Define tamanho menor
+        reset_button.setFixedSize(150, 40)  # Define tamanho menor
         reset_button.clicked.connect(self.reset_to_defaults)
         button_layout.addWidget(reset_button)
 
@@ -110,6 +110,12 @@ class ConfiguracoesWidget(QWidget):
         if self.main_window:
             try:
                 width, height = map(int, resolution.split("x"))
+                screen_geometry = QApplication.primaryScreen().availableGeometry()
+                
+                # Ajuste para garantir que a janela não ultrapasse a área visível
+                width = min(width, screen_geometry.width())
+                height = min(height, screen_geometry.height())
+
                 self.main_window.resize(width, height)
                 self.resolution_label.setText(f"Resolução Atual: {resolution}")
             except ValueError:
@@ -122,8 +128,8 @@ class ConfiguracoesWidget(QWidget):
         self.theme_toggle.setText("Alternar para Tema Escuro")
         self.font_family = "Arial"
         self.font_combo.setCurrentText("Arial")
-        self.font_size = 14
-        self.font_size_spinbox.setValue(14)
+        self.font_size = 12
+        self.font_size_spinbox.setValue(12)
         self.resolution_combo.setCurrentText("1200x600")
         self.apply_resolution("1200x600")
         self.apply_font_settings()
@@ -150,7 +156,7 @@ class ConfiguracoesWidget(QWidget):
             with open(ConfiguracoesWidget.CONFIG_FILE, "r") as file:
                 return json.load(file)
         except (FileNotFoundError, json.JSONDecodeError):
-            return {"theme": "light", "font_family": "Arial", "font_size": 14, "resolution": "1200x600"}
+            return {"theme": "light", "font_family": "Arial", "font_size": 12, "resolution": "1200x600"}
 
     def apply_theme(self, theme):
         self.current_theme = theme
@@ -158,25 +164,25 @@ class ConfiguracoesWidget(QWidget):
 
         qss = """
             QDialog, QMainWindow { background-color: #c2dafc; }
-            QLabel { font-size: 14px; color: #333333; }
+            QLabel { font-size: 12px; color: #333333; }
             QLineEdit, QComboBox {
                 background-color: #ffffff;
                 border: 1px solid #b0c4de;
                 border-radius: 10px;
                 padding: 5px;
-                font-size: 14px;
+                font-size: 12px;
                 color: #000000;
             }
 
             QCheckBox {
-                font-size: 14px;
+                font-size: 12px;
                 color: #333333; 
             }
 
             QSpinBox { 
                 background-color: #ffffff; 
                 color: #000000;
-                font-size: 14px;
+                font-size: 12px;
             }
                 
             QLineEdit:focus, QComboBox:focus { 
@@ -189,20 +195,20 @@ class ConfiguracoesWidget(QWidget):
                 border: 1px solid #b0c4de;
                 border-radius: 5px;
                 padding: 5px;
-                font-size: 14px;
+                font-size: 12px;
             }
             QComboBox QAbstractItemView {
                 background-color: #ffffff;
                 color: #000000;
                 selection-background-color: #0078d7;
                 selection-color: #ffffff;
-                font-size: 14px;
+                font-size: 12px;
             }
             
             QPushButton {
                 background-color: #0078d7;
                 color: #ffffff;
-                font-size: 14px;
+                font-size: 12px;
                 border: none;
                 border-radius: 5px;
                 padding: 8px;
@@ -220,20 +226,20 @@ class ConfiguracoesWidget(QWidget):
                 selection-background-color: #0078d7;
                 selection-color: #ffffff;
                 color: #000000;
-                font-size: 14px;
+                font-size: 12px;
             }
             QHeaderView::section {
                 background-color: #0078d7;
                 color: white;
                 padding: 5px;
                 border: 1px solid #b0c4de;
-                font-size: 14px;
+                font-size: 12px;
             }
         """ if theme == "light" else """
             QMainWindow { background-color: #121212; }
-            QWidget { background-color: #1E1E1E; color: white; font-size: 14px; }
+            QWidget { background-color: #1E1E1E; color: white; font-size: 12px; }
 
-            QLabel { font-size: 14px; color: white; }
+            QLabel { font-size: 12px; color: white; }
             
             QLineEdit, QComboBox {
                 background-color: #333333;
@@ -241,24 +247,24 @@ class ConfiguracoesWidget(QWidget):
                 border: 1px solid #555555;
                 border-radius: 5px;
                 padding: 5px;
-                font-size: 14px;
+                font-size: 12px;
             }
 
             QCheckBox {
-                font-size: 14px;
+                font-size: 12px;
                 color: white; 
             }
 
             QSpinBox { 
                 background-color: #333333; 
                 color: white;
-                font-size: 14px;
+                font-size: 12px;
             }
 
             QPushButton {
                 background-color: #0078d7;
                 color: white;
-                font-size: 14px;
+                font-size: 12px;
                 border-radius: 5px;
                 padding: 10px;
             }
@@ -267,10 +273,10 @@ class ConfiguracoesWidget(QWidget):
 
             QComboBox QAbstractItemView {
                 background-color: #333333;
-                color: white;
+                color: white;button
                 selection-background-color: #0078d7;
                 selection-color: white;
-                font-size: 14px;
+                font-size: 12px;
             }
             
             QTableWidget, QTableView {
@@ -279,14 +285,14 @@ class ConfiguracoesWidget(QWidget):
                 gridline-color: #555555;
                 selection-background-color: #0078d7;
                 selection-color: white;
-                font-size: 14px;
+                font-size: 12px;
             }
             QHeaderView::section {
                 background-color: #044a82;
                 color: white;
                 padding: 5px;
                 border: 1px solid #555555;
-                font-size: 14px;
+                font-size: 12px;
             }
         """
 

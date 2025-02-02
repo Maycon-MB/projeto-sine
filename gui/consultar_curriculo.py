@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QGridLayout, QFrame, 
-    QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QGroupBox
+    QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QGroupBox, QSpacerItem, QSizePolicy
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
@@ -32,10 +32,10 @@ class ConsultaWidget(QWidget):
         filter_layout = self.create_filter_layout()
         layout.addLayout(filter_layout)
 
-        # Botões de ação (Buscar e Limpar Filtros)
+        # Layout horizontal para os botões de ação (Buscar e Limpar)
         button_layout = QHBoxLayout()
 
-        # Alinha os botões no centro
+        # Centraliza os botões no layout
         button_layout.setAlignment(Qt.AlignCenter)
 
         self.search_button = QPushButton("Buscar")
@@ -50,7 +50,7 @@ class ConsultaWidget(QWidget):
         self.clear_button.clicked.connect(self.clear_filters)
         button_layout.addWidget(self.clear_button)
 
-        # Adiciona o layout dos botões ao layout principal
+        # Adiciona o layout de botões ao layout principal
         layout.addLayout(button_layout)
 
         # Tabela de resultados
@@ -66,16 +66,29 @@ class ConsultaWidget(QWidget):
         header.setSectionResizeMode(QHeaderView.Stretch)
         layout.addWidget(self.table)
 
-        # Total de resultados e paginação
+        # Layout para total de currículos e paginação
+        bottom_layout = QVBoxLayout()
+
+        # Total de currículos (centralizado)
+        self.total_label = QLabel("TOTAL DE CURRÍCULOS: 0")
+        self.total_label.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
+        total_layout = QHBoxLayout()
+        total_layout.addWidget(self.total_label, alignment=Qt.AlignCenter)
+
+        # Adiciona "TOTAL DE CURRÍCULOS" ao layout
+        bottom_layout.addLayout(total_layout)
+
+        # Layout para os botões de paginação
         pagination_layout = QHBoxLayout()
 
+        # Botões de paginação nas extremidades
         self.previous_button = QPushButton("<< Anterior")
         self.previous_button.setStyleSheet(self._button_stylesheet())  # Aplica o mesmo estilo
         self.previous_button.setMinimumWidth(100)  # Mesmo tamanho do botão "Buscar"
         self.previous_button.setFixedHeight(36)  # Mesmo tamanho do botão "Buscar"
         self.previous_button.clicked.connect(self.previous_page)
         self.previous_button.setEnabled(False)
-        pagination_layout.addWidget(self.previous_button)
+        pagination_layout.addWidget(self.previous_button, alignment=Qt.AlignLeft)
 
         self.page_label = QLabel("Página 1")
         pagination_layout.addWidget(self.page_label, alignment=Qt.AlignCenter)
@@ -86,15 +99,13 @@ class ConsultaWidget(QWidget):
         self.next_button.setFixedHeight(36)  # Mesmo tamanho do botão "Buscar"
         self.next_button.clicked.connect(self.next_page)
         self.next_button.setEnabled(False)
-        pagination_layout.addWidget(self.next_button)
+        pagination_layout.addWidget(self.next_button, alignment=Qt.AlignRight)
 
-        layout.addLayout(pagination_layout)
+        # Adiciona os botões de paginação ao layout
+        bottom_layout.addLayout(pagination_layout)
 
-
-        # Total de resultados
-        self.total_label = QLabel("TOTAL DE CURRÍCULOS: 0")
-        self.total_label.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
-        layout.addWidget(self.total_label)
+        # Adiciona o layout final ao layout principal
+        layout.addLayout(bottom_layout)
 
         self.setLayout(layout)
 
@@ -105,35 +116,41 @@ class ConsultaWidget(QWidget):
         filter_layout.addWidget(QLabel("CPF:"), 0, 0)
         self.cpf_input = QLineEdit()
         self.cpf_input.setPlaceholderText("Digite o CPF")
+        self.cpf_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.cpf_input, 0, 1)
 
         filter_layout.addWidget(QLabel("NOME:"), 1, 0)
         self.nome_input = QLineEdit()
         self.nome_input.setPlaceholderText("Digite o nome")
+        self.nome_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.nome_input, 1, 1)
 
         filter_layout.addWidget(QLabel("SEXO:"), 2, 0)
         self.sexo_input = QComboBox()
         self.sexo_input.setEditable(True)
         self.sexo_input.addItems(["", "MASCULINO", "FEMININO"])
+        self.sexo_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.sexo_input, 2, 1)
 
         filter_layout.addWidget(QLabel("IDADE MÍNIMA:"), 3, 0)
         self.idade_min_input = QSpinBox()
         self.idade_min_input.setRange(0, 120)
         self.idade_min_input.setSuffix(" anos")
+        self.idade_min_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.idade_min_input, 3, 1)
 
         filter_layout.addWidget(QLabel("IDADE MÁXIMA:"), 4, 0)
         self.idade_max_input = QSpinBox()
         self.idade_max_input.setRange(0, 120)
         self.idade_max_input.setSuffix(" anos")
+        self.idade_max_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.idade_max_input, 4, 1)
 
         # **Segunda coluna (CEP, CIDADE, TELEFONE, TELEFONE EXTRA, ESCOLARIDADE)**
         filter_layout.addWidget(QLabel("CEP:"), 0, 2)
         self.cep_input = QLineEdit()
         self.cep_input.setPlaceholderText("Digite o CEP")
+        self.cep_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.cep_input, 0, 3)
 
         filter_layout.addWidget(QLabel("CIDADE:"), 1, 2)
@@ -142,16 +159,19 @@ class ConsultaWidget(QWidget):
         self.cidade_input.addItem("")
         cidades = self.curriculo_model.listar_cidades()
         self.cidade_input.addItems(cidades)
+        self.cidade_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.cidade_input, 1, 3)
 
         filter_layout.addWidget(QLabel("TELEFONE:"), 2, 2)
         self.telefone_input = QLineEdit()
         self.telefone_input.setPlaceholderText("Digite o telefone")
+        self.telefone_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.telefone_input, 2, 3)
 
         filter_layout.addWidget(QLabel("TELEFONE EXTRA:"), 3, 2)
         self.telefone_extra_input = QLineEdit()
         self.telefone_extra_input.setPlaceholderText("Digite o telefone extra")
+        self.telefone_extra_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.telefone_extra_input, 3, 3)
 
         filter_layout.addWidget(QLabel("ESCOLARIDADE:"), 4, 2)
@@ -169,57 +189,67 @@ class ConsultaWidget(QWidget):
             "MESTRADO",
             "DOUTORADO"
         ])
+        self.escolaridade_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.escolaridade_input, 4, 3)
 
         # **Terceira coluna (CARGO, SERVIÇO, VAGA ENCAMINHADA, PRIMEIRO EMPREGO)**
         filter_layout.addWidget(QLabel("CARGO:"), 0, 4)
         self.cargo_input = QLineEdit()
         self.cargo_input.setPlaceholderText("Digite o cargo")
+        self.cargo_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.cargo_input, 0, 5)
 
         filter_layout.addWidget(QLabel("SERVIÇO:"), 1, 4)
         self.servico_input = QComboBox()
         self.servico_input.setEditable(True)
         self.servico_input.addItems(["", "SINE", "MANUAL"])
+        self.servico_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.servico_input, 1, 5)
 
         filter_layout.addWidget(QLabel("VAGA ENCAMINHADA:"), 2, 4)
         self.vaga_encaminhada_input = QComboBox()
         self.vaga_encaminhada_input.setEditable(True)
         self.vaga_encaminhada_input.addItems(["", "Sim", "Não"])
+        self.vaga_encaminhada_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.vaga_encaminhada_input, 2, 5)
 
         filter_layout.addWidget(QLabel("PRIMEIRO EMPREGO:"), 3, 4)
         self.primeiro_emprego_input = QComboBox()
         self.primeiro_emprego_input.setEditable(True)
         self.primeiro_emprego_input.addItems(["", "Sim", "Não"])
+        self.primeiro_emprego_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.primeiro_emprego_input, 3, 5)
 
         # **Quarta coluna (EXPERIÊNCIA ANOS MIN, ANOS MAX, MESES MIN, MESES MAX, CTPS)**
         filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÍN.):"), 0, 6)
         self.experiencia_anos_min = QSpinBox()
         self.experiencia_anos_min.setRange(0, 50)
+        self.experiencia_anos_min.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.experiencia_anos_min, 0, 7)
 
         filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÁX.):"), 1, 6)
         self.experiencia_anos_max = QSpinBox()
         self.experiencia_anos_max.setRange(0, 50)
+        self.experiencia_anos_max.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.experiencia_anos_max, 1, 7)
 
         filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÍN.):"), 2, 6)
         self.experiencia_meses_min = QSpinBox()
         self.experiencia_meses_min.setRange(0, 11)  # Meses variam de 0 a 11
+        self.experiencia_meses_min.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.experiencia_meses_min, 2, 7)
 
         filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÁX.):"), 3, 6)
         self.experiencia_meses_max = QSpinBox()
         self.experiencia_meses_max.setRange(0, 11)
+        self.experiencia_meses_max.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.experiencia_meses_max, 3, 7)
 
         filter_layout.addWidget(QLabel("CTPS:"), 4, 6)
         self.ctps_input = QComboBox()
         self.ctps_input.setEditable(True)
         self.ctps_input.addItems(["", "Sim", "Não"])
+        self.ctps_input.setFixedHeight(25)  # Reduzindo a altura
         filter_layout.addWidget(self.ctps_input, 4, 7)
 
         return filter_layout

@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QComboBox, QDateEdit, QCheckBox
+    QWidget, QVBoxLayout, QLabel, QSizePolicy, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QComboBox, QDateEdit, QCheckBox
 )
 from PySide6.QtCore import Qt, QEvent, QDate
 from PySide6.QtGui import QKeyEvent, QIcon
@@ -19,9 +19,6 @@ class CadastroWidget(QWidget):
         self.setup_ui()
 
     def setup_ui(self):
-        """
-        Configura a interface do usuário para o formulário de cadastro de currículo.
-        """
         self.experiencia_count = 0
         self.max_experiencias = 99
 
@@ -30,21 +27,17 @@ class CadastroWidget(QWidget):
         # Título
         title_label = QLabel("CADASTRO DE CURRÍCULO")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setStyleSheet("font-size: 30px; font-weight: bold; margin-bottom: 10px;")
+        title_label.setStyleSheet("font-size: 2em; font-weight: bold; margin-bottom: 10px;")
         main_layout.addWidget(title_label)
 
         # Formulário
         form_layout = QGridLayout()
-        form_layout.setSpacing(15)
+        form_layout.setSpacing(10)
 
         self.cpf_input = self.create_line_edit("DIGITE O CPF (APENAS NÚMEROS)", "CPF:", form_layout, 0, mask="000.000.000-00")
-        
         self.nome_input = self.create_line_edit("DIGITE O NOME COMPLETO", "NOME COMPLETO:", form_layout, 1)
-        
         self.sexo_input = self.create_combo_box("SEXO:", ["MASCULINO", "FEMININO"], form_layout, 2)
-
         self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")
-
         self.cep_input = self.create_line_edit("DIGITE O CEP", "CEP:", form_layout, 4, mask="00000-000")
 
         try:
@@ -55,9 +48,7 @@ class CadastroWidget(QWidget):
             cidades = ["SELECIONE UMA CIDADE"]
 
         self.cidade_input = self.create_combo_box("CIDADE:", cidades, form_layout, 5)
-
         self.telefone_input = self.create_line_edit("DIGITE O TELEFONE", "TELEFONE:", form_layout, 6, mask="(00) 00000-0000")
-
         self.telefone_extra_input = self.create_line_edit("DIGITE O SEGUNDO TELEFONE (OPCIONAL)", "TELEFONE EXTRA:", form_layout, 7, mask="(00) 00000-0000")
 
         self.escolaridade_input = self.create_combo_box(
@@ -78,7 +69,7 @@ class CadastroWidget(QWidget):
 
         # Experiência Section
         experiencia_label = QLabel("EXPERIÊNCIA")
-        experiencia_label.setStyleSheet("font-size: 20px; font-weight: bold; margin-top: 15px;")
+        experiencia_label.setStyleSheet("font-size: 1.5em; font-weight: bold; margin-top: 15px;")
         form_layout.addWidget(experiencia_label, 9, 0, 1, 2)
 
         # Checkbox de Primeiro Emprego
@@ -92,7 +83,7 @@ class CadastroWidget(QWidget):
 
         # Ajustando o botão "ADICIONAR EXPERIÊNCIA"
         self.add_experiencia_button = QPushButton(" + ADICIONAR EXPERIÊNCIA")
-        self.add_experiencia_button.setFixedSize(220, 40)  # Define tamanho fixo menor
+        self.add_experiencia_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.add_experiencia_button.clicked.connect(self.add_experiencia)
         form_layout.addWidget(self.add_experiencia_button, 12, 0, 1, 2)
 
@@ -104,17 +95,16 @@ class CadastroWidget(QWidget):
 
         main_layout.addLayout(form_layout)
 
-
         self.cadastrar_button = QPushButton("CADASTRAR")
         self.cadastrar_button.clicked.connect(self.cadastrar_dados)
-        self.cadastrar_button.setFixedSize(320, 60)  # Define um tamanho menor
-        self.cadastrar_button.setStyleSheet("background-color: #0073CF; color: white; padding: 10px; font-size: 16px;")
-        self.cadastrar_button.installEventFilter(self)
+        self.cadastrar_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.cadastrar_button.setMinimumSize(150, 40)  # Tamanho mínimo, mas pode expandir
+        self.cadastrar_button.setStyleSheet("background-color: #0073CF; color: white; padding: 10px; font-size: 1em;")
 
         self.limpar_button = QPushButton("LIMPAR")
         self.limpar_button.clicked.connect(self.limpar_formulario)
-        self.limpar_button.setFixedSize(320, 60)  # Define um tamanho menor
-        self.limpar_button.setStyleSheet("background-color: #dcdcdc; color: black; padding: 10px; font-size: 16px;")
+        self.limpar_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        self.limpar_button.setStyleSheet("background-color: #dcdcdc; color: black; padding: 10px; font-size: 1em;")
 
         # Organizando os botões lado a lado
         button_layout = QHBoxLayout()
@@ -132,20 +122,20 @@ class CadastroWidget(QWidget):
     def create_line_edit(self, placeholder, label, layout, row, mask=None):
         line_edit = QLineEdit()
         line_edit.setPlaceholderText(placeholder)
-        line_edit.setStyleSheet("font-size: 16px; height: 30px; text-transform: uppercase;")
+        line_edit.setStyleSheet("font-size: 1em; height: 2em; text-transform: uppercase;")
+        line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         line_edit.installEventFilter(self)
 
         # Converte automaticamente o texto para maiúsculo enquanto o usuário digita
         line_edit.textChanged.connect(lambda text: line_edit.setText(text.upper()))
 
-        # Armazena a máscara, mas só aplica ao sair do campo
         if mask:
             line_edit._custom_mask = mask
 
         layout.addWidget(QLabel(label.upper()), row, 0)
         layout.addWidget(line_edit, row, 1)
         return line_edit
-
+    
     def create_spin_box(self, label, layout, row):
         container = QWidget()
         container_layout = QHBoxLayout(container)
@@ -154,11 +144,12 @@ class CadastroWidget(QWidget):
         spin_box = QSpinBox()
         spin_box.setRange(0, 120)
         spin_box.setButtonSymbols(QSpinBox.NoButtons)
-        spin_box.setStyleSheet("font-size: 16px; height: 30px;")
+        spin_box.setStyleSheet("font-size: 1em; height: 2em;")  # Ajuste de tamanho proporcional
+        spin_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Expande horizontalmente
         spin_box.installEventFilter(self)
         
         placeholder_label = QLabel("Apenas Números")
-        placeholder_label.setStyleSheet("color: gray; font-size: 14px; position: absolute;")
+        placeholder_label.setStyleSheet("color: gray; font-size: 0.9em; position: absolute;")
         placeholder_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
         spin_box.valueChanged.connect(lambda: placeholder_label.setVisible(spin_box.value() == 0))
@@ -170,28 +161,26 @@ class CadastroWidget(QWidget):
         layout.addWidget(container, row, 1)
         return spin_box, placeholder_label
 
+
     def create_combo_box(self, label, options, layout, row):
         combo_box = QComboBox()
         combo_box.setEditable(True)
-        combo_box.setStyleSheet("font-size: 16px; height: 30px;")
+        combo_box.setStyleSheet("font-size: 1em; height: 2em;")
 
-        # Verifica se options é uma função, e chama-a para obter os valores
         if callable(options):
             options = options()
 
-        # Certifique-se de que options seja uma lista de strings
         if isinstance(options, list) and len(options) > 0 and isinstance(options[0], tuple):
             options = [item[0] for item in options]
 
-        combo_box.addItems(options)  # Adicionando as opções passadas
-
-        combo_box.installEventFilter(self)  # Captura Enter no ComboBox
+        combo_box.addItems(options)
+        combo_box.installEventFilter(self)
         if combo_box.isEditable():
-            combo_box.lineEdit().installEventFilter(self)  # Captura Enter no LineEdit interno
-            combo_box.lineEdit().textChanged.connect(lambda text: combo_box.lineEdit().setText(text.upper()))  # Uppercase automático
+            combo_box.lineEdit().installEventFilter(self)
+            combo_box.lineEdit().textChanged.connect(lambda text: combo_box.lineEdit().setText(text.upper())) 
 
-        layout.addWidget(QLabel(label), row, 0)  # Adiciona o label
-        layout.addWidget(combo_box, row, 1)      # Adiciona o combo_box no layout
+        layout.addWidget(QLabel(label), row, 0)
+        layout.addWidget(combo_box, row, 1)
         return combo_box
     
     def verificar_nome_existente(self):
@@ -216,26 +205,22 @@ class CadastroWidget(QWidget):
             self.nome_status_label.setStyleSheet("color: orange;")
 
     def add_experiencia(self):
-        """
-        Adiciona um novo campo para experiência, incluindo um checkbox para CTPS.
-        """
         layout = QHBoxLayout()
         cargo_input = QLineEdit()
         cargo_input.setPlaceholderText("CARGO")
-        cargo_input.setStyleSheet("font-size: 16px; height: 30px;")
+        cargo_input.setStyleSheet("font-size: 1em; height: 2em;")
 
-        # Converte o texto para maiúsculo enquanto o usuário digita
         cargo_input.textChanged.connect(lambda text: cargo_input.setText(text.upper()))
 
         anos_input = QSpinBox()
         anos_input.setRange(0, 50)
         anos_input.setSuffix(" ANO(S)")
-        anos_input.setStyleSheet("font-size: 16px; height: 30px;")
+        anos_input.setStyleSheet("font-size: 1em; height: 2em;")
 
         meses_input = QSpinBox()
         meses_input.setRange(0, 11)
         meses_input.setSuffix(" MÊS(ES)")
-        meses_input.setStyleSheet("font-size: 16px; height: 30px;")
+        meses_input.setStyleSheet("font-size: 1em; height: 2em;")
 
         ctps_checkbox = QCheckBox("CTPS")
 
@@ -254,14 +239,12 @@ class CadastroWidget(QWidget):
         self.experiencias_layout.addLayout(layout)
         self.experiencia_count += 1
 
-        # Instalar o filtro de eventos para Enter funcionar como Tab
         cargo_input.installEventFilter(self)
         anos_input.installEventFilter(self)
         meses_input.installEventFilter(self)
         ctps_checkbox.installEventFilter(self)
         remove_button.installEventFilter(self)
 
-        # Atualizar ordem de tabulação
         self.configure_tab_order()
 
     def remove_experiencia(self, layout):

@@ -28,14 +28,20 @@ class MainWindow(QMainWindow):
         # Carregar configurações salvas
         config = ConfiguracoesWidget.load_configurations()
         self.current_theme = config.get("theme", "light")
-        self.resolution = config.get("resolution", "1920x1080")
 
-        # Configurações do tamanho da janela (não será usado para maximizar a janela, apenas salvar a resolução)
-        width, height = map(int, self.resolution.split("x"))
-        self.resize(width, height)  # Aplica a resolução salva, mas com a intenção de maximizar depois
+        # Definir uma resolução padrão ou ajustar a janela de acordo com a tela disponível
+        screen_geometry = QApplication.primaryScreen().availableGeometry()
+        width, height = screen_geometry.width(), screen_geometry.height()
+
+        # Aplica a resolução ajustada à área disponível
+        self.resize(width, height)
+
+        # Define um tamanho mínimo de janela
+        self.setMinimumSize(800, 600)
 
         # Garantir que a janela sempre será maximizada ao iniciar
-        self.showMaximized()  # Aqui é onde você garante que a janela será maximizada
+        self.showMaximized()
+
 
         # Diretório base do projeto
         self.base_dir = Path(__file__).resolve().parent
@@ -257,8 +263,8 @@ if __name__ == "__main__":
     db_connection = DatabaseConnection(
         dbname="projeto_sine",
         user="postgres",
-        password="teste",
-        host="192.168.1.213"
+        password="admin",
+        host="localhost"
     )
     usuario_model = UsuarioModel(db_connection)
 
