@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QTableWidget, QTableWidgetItem, QHBoxLayout,
     QWidget, QPushButton, QMessageBox, QComboBox, QLabel, QHeaderView, QLineEdit, QCheckBox
 )
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
 from PySide6.QtCore import Qt
 
 
@@ -116,11 +116,14 @@ class TelaNotificacoes(QDialog):
 
                 status_item = self._criar_celula(notificacao["status_aprovacao"])
                 if notificacao["status_aprovacao"] == "pendente":
-                    status_item.setBackground(Qt.yellow)
+                    # Define um amarelo mais suave
+                    status_item.setBackground(QColor("#f28b24"))  # LemonChiffon, por exemplo
                 elif notificacao["status_aprovacao"] == "aprovado":
-                    status_item.setBackground(Qt.green)
+                    # Define um verde com tom personalizado
+                    status_item.setBackground(QColor("#02b002"))  # LightGreen
                 elif notificacao["status_aprovacao"] == "rejeitado":
-                    status_item.setBackground(Qt.red)
+                    # Define um vermelho com tom personalizado
+                    status_item.setBackground(QColor("#c20000"))  # Um tom de vermelho claro
                 self.tabela_notificacoes.setItem(row, 5, status_item)
 
                 btn_aprovar = QPushButton("✔")

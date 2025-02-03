@@ -63,7 +63,11 @@ class ConsultaWidget(QWidget):
         ])
         self.table.setShowGrid(True)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
+        # Define a primeira coluna para preencher o espaço restante
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        # Define as demais colunas para se ajustarem ao conteúdo
+        for col in range(1, self.table.columnCount()):
+            header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
         layout.addWidget(self.table)
 
         # Layout para total de currículos e paginação
