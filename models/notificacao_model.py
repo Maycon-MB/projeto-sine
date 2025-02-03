@@ -1,8 +1,8 @@
-from database.connection import DatabaseConnection
+
 import logging
 
 
-class AprovacaoModel:
+class NotificacaoModel:
     def __init__(self, db_connection):
         self.db = db_connection
         logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

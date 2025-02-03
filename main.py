@@ -14,7 +14,7 @@ from gui.login_cadastro import LoginCadastroDialog  # Tela de login/cadastro
 from gui.dashboard import DashboardWidget
 from database.connection import DatabaseConnection
 from models.usuario_model import UsuarioModel
-from models.aprovacao_model import AprovacaoModel
+from models.notificacao_model import NotificacaoModel
 from models.curriculo_model import CurriculoModel  # 🔥 Importando o CurriculoModel
 
 
@@ -53,7 +53,7 @@ class MainWindow(QMainWindow):
 
         # Inicializar modelo de aprovações
         self.db_connection = db_connection
-        self.aprovacao_model = AprovacaoModel(self.db_connection)
+        self.notificacao_model = NotificacaoModel(self.db_connection)
 
         self.curriculo_model = CurriculoModel(self.db_connection)  # ✅ Criando instância correta
 
@@ -191,7 +191,7 @@ class MainWindow(QMainWindow):
 
     def _show_notifications(self):
         try:
-            notificacoes = TelaNotificacoes(self.aprovacao_model, self.usuario_id, usuario_logado['tipo_usuario'])
+            notificacoes = TelaNotificacoes(self.notificacao_model, self.usuario_id, usuario_logado['tipo_usuario'])
             notificacoes.exec()
             self._update_notification_count()
         except Exception as e:
@@ -199,7 +199,7 @@ class MainWindow(QMainWindow):
 
     def _update_notification_count(self):
         try:
-            notificacoes = self.aprovacao_model.listar_aprovacoes_pendentes(tipo_usuario=usuario_logado['tipo_usuario'], usuario_id=self.usuario_id)
+            notificacoes = self.notificacao_model.listar_aprovacoes_pendentes(tipo_usuario=usuario_logado['tipo_usuario'], usuario_id=self.usuario_id)
             count = len(notificacoes)
             self.notification_count_label.setText(str(count))
             self.notification_count_label.setVisible(count > 0)
@@ -263,8 +263,8 @@ if __name__ == "__main__":
     db_connection = DatabaseConnection(
         dbname="projeto_sine",
         user="postgres",
-        password="admin",
-        host="localhost"
+        password="teste",
+        host="192.168.1.213"
     )
     usuario_model = UsuarioModel(db_connection)
 

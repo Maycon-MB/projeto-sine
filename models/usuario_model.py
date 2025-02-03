@@ -1,6 +1,6 @@
 from database.connection import DatabaseConnection
 from email_utils import enviar_email
-from models.aprovacao_model import AprovacaoModel
+from models.notificacao_model import NotificacaoModel
 import bcrypt
 import logging
 
@@ -8,7 +8,7 @@ import logging
 class UsuarioModel:
     def __init__(self, db_connection):
         self.db = db_connection
-        self.aprovacao_model = AprovacaoModel(db_connection)  # Integração com AprovacaoModel
+        self.notificacao_model = NotificacaoModel(db_connection)  # Integração com NotificacaoModel
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def verificar_email_existente(self, email):
@@ -49,7 +49,7 @@ class UsuarioModel:
             result = self.db.execute_query(query, (usuario, senha_hash, email, cidade_id, tipo_usuario), fetch_one=True)
 
             # Envia aprovação pendente para o admin/master
-            self.aprovacao_model.enviar_aprovacao(result['id'], cidade_id)
+            self.notificacao_model.enviar_aprovacao(result['id'], cidade_id)
             logging.info(f"Usuário cadastrado com ID: {result['id']}, aguardando aprovação.")
             return result['id']
         except Exception as e:
