@@ -41,6 +41,37 @@ class CurriculoModel:
         if not telefone:
             return None
         return re.sub(r"\D", "", telefone)
+    
+    def listar_funcao(self):
+        """
+        Lista todas as funções (cargos) disponíveis na tabela public.funcoes.
+        """
+        query = "SELECT nome FROM public.funcoes ORDER BY nome;"
+
+        try:
+            results = self.db.execute_query(query, fetch_all=True)
+            # Converter cada resultado para um dicionário e acessar o campo 'nome'
+            funcoes = [result['nome'] for result in results]
+            return funcoes
+        except Exception as e:
+            print(f"Erro ao listar funções: {e}")
+            return []
+
+    def obter_funcao_id(self, funcao_nome):
+        """
+        Busca o ID da função no banco de dados pelo nome da função.
+        """
+        query = "SELECT id FROM public.funcoes WHERE nome = %s;"
+
+        try:
+            resultado = self.db.execute_query(query, (funcao_nome,), fetch_one=True)
+            if resultado:
+                return resultado['id']
+            return None
+        except Exception as e:
+            print(f"Erro ao buscar ID da função: {e}")
+            raise
+
         
     def listar_cidades(self):
         """
@@ -85,12 +116,11 @@ class CurriculoModel:
         Busca currículos aplicando filtros dinâmicos, ordenação por nome e paginação.
         """
         query = """
-            SELECT * FROM filtrar_curriculos(
+            SELECT * FROM public.filtrar_curriculos(
                 %(nome)s::TEXT, 
                 %(cidade)s::TEXT, 
                 %(escolaridade)s::TEXT, 
-                %(cargo)s::TEXT, 
-                %(vaga_encaminhada)s::BOOLEAN, 
+                %(funcao)s::TEXT,  -- Ajustado para "funcao"
                 %(tem_ctps)s::BOOLEAN, 
                 %(servico)s::TEXT, 
                 %(idade_min)s::INTEGER, 
@@ -100,20 +130,20 @@ class CurriculoModel:
                 %(sexo)s::TEXT, 
                 %(cpf)s::TEXT, 
                 %(cep)s::TEXT, 
-                %(primeiro_emprego)s::BOOLEAN, 
+                %(pcd)s::BOOLEAN, 
                 %(telefone)s::TEXT, 
                 %(telefone_extra)s::TEXT, 
                 %(limite)s::INTEGER, 
                 %(offset)s::INTEGER
             )
-            ORDER BY nome ASC;  -- Adicionado para ordenar alfabeticamente pelo nome
+            ORDER BY nome ASC;
         """
+        # Parâmetros de filtro
         params = {
             "nome": filtros.get("nome"),
             "cidade": filtros.get("cidade"),
             "escolaridade": filtros.get("escolaridade"),
-            "cargo": filtros.get("cargo"),
-            "vaga_encaminhada": filtros.get("vaga_encaminhada"),
+            "funcao": filtros.get("funcao"),  # "funcao" é agora o filtro correto
             "tem_ctps": filtros.get("tem_ctps"),
             "servico": filtros.get("servico"),
             "idade_min": filtros.get("idade_min"),
@@ -122,13 +152,15 @@ class CurriculoModel:
             "experiencia_max": filtros.get("experiencia_max"),
             "sexo": filtros.get("sexo"),
             "cpf": filtros.get("cpf"),
-            "cep": filtros.get("cep"),  # Novo filtro
-            "primeiro_emprego": filtros.get("primeiro_emprego"),  # Novo filtro
-            "telefone": filtros.get("telefone", ""),  # Garantir que seja string
-            "telefone_extra": filtros.get("telefone_extra", ""),  # Garantir que seja string
+            "cep": filtros.get("cep"),
+            "pcd": filtros.get("pcd"),  # "pcd" continua como filtro
+            "telefone": filtros.get("telefone", ""),  # Parâmetro de telefone
+            "telefone_extra": filtros.get("telefone_extra", ""),  # Parâmetro de telefone_extra
             "limite": limite,
             "offset": offset,
         }
+        
+        # Executa a consulta
         return self.db.execute_query(query, params, fetch_all=True)
 
     def get_curriculo_by_id(self, curriculo_id):
@@ -137,9 +169,9 @@ class CurriculoModel:
         """
         query = """
         SELECT c.id AS curriculo_id, c.nome, c.cpf, c.sexo, c.data_nascimento, ci.nome AS cidade, 
-            c.telefone, c.telefone_extra, c.escolaridade, c.servico, c.vaga_encaminhada, 
-            c.cep, c.primeiro_emprego, -- Incluindo os novos campos
-            e.cargo, e.anos_experiencia, e.meses_experiencia
+            c.telefone, c.telefone_extra, c.escolaridade, c.servico, 
+            c.cep, c.pcd, c.tem_ctps, -- Incluindo os novos campos
+            e.funcao, e.anos_experiencia, e.meses_experiencia
         FROM curriculo c
         LEFT JOIN experiencias e ON c.id = e.id_curriculo
         LEFT JOIN cidades ci ON c.cidade_id = ci.id
@@ -151,7 +183,7 @@ class CurriculoModel:
             print(f"Erro ao buscar currículo por ID: {e}")
             return None
 
-    def update_curriculo(self, curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego):
+    def update_curriculo(self, curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, servico, cep, pcd):
         """
         Atualiza os dados de um currículo.
         """
@@ -171,14 +203,14 @@ class CurriculoModel:
         query = """
         UPDATE curriculo
         SET nome = %s, cpf = %s, sexo = %s, data_nascimento = %s, cidade_id = %s,
-            telefone = %s, telefone_extra = %s, escolaridade = %s, vaga_encaminhada = %s,
-            tem_ctps = %s, servico = %s, cep = %s, primeiro_emprego = %s
+            telefone = %s, telefone_extra = %s, escolaridade = %s,
+            tem_ctps = %s, servico = %s, cep = %s, pcd = %s
         WHERE id = %s;
         """
         try:
             self.db.execute_query(
                 query,
-                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego, curriculo_id)
+                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, servico, cep, pcd, curriculo_id)
             )
         except Exception as e:
             print(f"Erro ao atualizar currículo: {e}")
@@ -198,7 +230,7 @@ class CurriculoModel:
             print(f"Erro ao buscar ID da cidade: {e}")
             raise
 
-    def insert_curriculo(self, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, experiencias, servico, cep, primeiro_emprego):
+    def insert_curriculo(self, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, experiencias, servico, cep, pcd):
         """
         Insere um novo currículo no banco de dados, incluindo as experiências.
         """
@@ -217,26 +249,26 @@ class CurriculoModel:
 
         # Insere os dados do currículo
         query_curriculo = """
-        INSERT INTO curriculo (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego)
+        INSERT INTO curriculo (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, servico, cep, pcd)
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id;
         """
         try:
             curriculo_id = self.db.execute_query(
                 query_curriculo,
-                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico, cep, primeiro_emprego),
+                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, servico, cep, pcd),
                 fetch_one=True
             )['id']
 
             # Insere as experiências, se houver
             if experiencias:
                 query_experiencia = """
-                INSERT INTO experiencias (id_curriculo, cargo, anos_experiencia, meses_experiencia)
+                INSERT INTO experiencias (id_curriculo, funcao, anos_experiencia, meses_experiencia)
                 VALUES (%s, %s, %s, %s);
                 """
                 for experiencia in experiencias:
-                    cargo, anos, meses = experiencia
-                    self.db.execute_query(query_experiencia, (curriculo_id, cargo, anos, meses))
+                    funcao, anos, meses = experiencia
+                    self.db.execute_query(query_experiencia, (curriculo_id, funcao, anos, meses))
 
             return curriculo_id
         except Exception as e:
@@ -248,24 +280,24 @@ class CurriculoModel:
         Insere ou atualiza experiências profissionais associadas a um currículo.
         """
         query = """
-        INSERT INTO experiencias (id_curriculo, cargo, anos_experiencia, meses_experiencia)
+        INSERT INTO experiencias (id_curriculo, funcao, anos_experiencia, meses_experiencia)
         VALUES (%s, %s, %s, %s)
-        ON CONFLICT (id_curriculo, cargo)
+        ON CONFLICT (id_curriculo, funcao)
         DO UPDATE SET
             anos_experiencia = EXCLUDED.anos_experiencia,
             meses_experiencia = EXCLUDED.meses_experiencia;
         """
-        for cargo, anos_experiencia, meses_experiencia in experiencias:
-            if not cargo or anos_experiencia < 0 or meses_experiencia < 0 or meses_experiencia >= 12:
+        for funcao, anos_experiencia, meses_experiencia in experiencias:
+            if not funcao or anos_experiencia < 0 or meses_experiencia < 0 or meses_experiencia >= 12:
                 raise ValueError("Experiência inválida. Preencha todos os campos corretamente.")
-            self.db.execute_query(query, (id_curriculo, cargo, anos_experiencia, meses_experiencia))
+            self.db.execute_query(query, (id_curriculo, funcao, anos_experiencia, meses_experiencia))
 
     def fetch_experiencias(self, id_curriculo):
         """
         Busca as experiências profissionais associadas a um currículo.
         """
         query = """
-        SELECT cargo, anos_experiencia, meses_experiencia
+        SELECT funcao, anos_experiencia, meses_experiencia
         FROM experiencias
         WHERE id_curriculo = %s;
         """
@@ -326,12 +358,12 @@ class CurriculoModel:
             print(f"Erro ao obter distribuição de escolaridade: {e}")
             return {}
 
-    def get_top_cargos(self, filtro=None, limit=5):
+    def get_top_funcoes(self, filtro=None, limit=5):
         """
-        Retorna os cargos mais populares com base na contagem de currículos, aplicando filtros se necessário.
+        Retorna os funcaos mais populares com base na contagem de currículos, aplicando filtros se necessário.
         """
         query = """
-        SELECT experiencias.cargo, COUNT(experiencias.id_curriculo) AS total
+        SELECT experiencias.funcao, COUNT(experiencias.id_curriculo) AS total
         FROM experiencias
         """
         
@@ -345,23 +377,23 @@ class CurriculoModel:
         if filtro in filtros:
             query += filtros[filtro]
         
-        query += " GROUP BY experiencias.cargo ORDER BY total DESC LIMIT %s;"
+        query += " GROUP BY experiencias.funcao ORDER BY total DESC LIMIT %s;"
 
         try:
             results = self.db.execute_query(query, (limit,), fetch_all=True)
-            return {row['cargo']: row['total'] for row in results}
+            return {row['funcao']: row['total'] for row in results}
         except Exception as e:
-            print(f"Erro ao obter top cargos: {e}")
+            print(f"Erro ao obter top funcaos: {e}")
             return {}
 
-    def get_primeiro_emprego_distribuicao(self, filtro=None):
+    def get_pcd_distribuicao(self, filtro=None):
         """
-        Retorna a distribuição entre pessoas que estão buscando o primeiro emprego e as que já possuem experiência, aplicando filtros se necessário.
+        Retorna a distribuição entre pessoas que estão buscando o pcd e as que já possuem experiência, aplicando filtros se necessário.
         """
         query = """
         SELECT 
             CASE 
-                WHEN primeiro_emprego THEN 'Primeiro Emprego'
+                WHEN pcd THEN 'pcd'
                 ELSE 'Com Experiência'
             END AS categoria,
             COUNT(*) AS total
@@ -384,7 +416,7 @@ class CurriculoModel:
             results = self.db.execute_query(query, fetch_all=True)
             return {row['categoria']: row['total'] for row in results}
         except Exception as e:
-            print(f"Erro ao obter distribuição de primeiro emprego: {e}")
+            print(f"Erro ao obter distribuição de pcd: {e}")
             return {}
 
     def get_experiencia_por_idade(self, filtro=None):

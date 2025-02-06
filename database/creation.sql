@@ -6,16 +6,14 @@ CREATE SCHEMA public;
 
 -- Dropar tabelas e views caso existam
 DROP TABLE IF EXISTS public.logs_auditoria;
-DROP TABLE IF EXISTS public.notificacoes;
 DROP VIEW IF EXISTS public.vw_curriculos_detalhados;
-DROP TABLE IF EXISTS public.recuperacao_senha;
-DROP TABLE IF EXISTS public.aprovacoes;
 DROP TABLE IF EXISTS public.usuarios;
 DROP TABLE IF EXISTS public.servicos;
 DROP TABLE IF EXISTS public.pessoa_servicos;
 DROP TABLE IF EXISTS public.experiencias;
 DROP TABLE IF EXISTS public.curriculo;
 DROP TABLE IF EXISTS public.cidades;
+DROP TABLE IF EXISTS public.funcoes;  -- Adicionando drop para a nova tabela de funções
 
 -- Tabela: cidades
 CREATE TABLE public.cidades (
@@ -124,6 +122,29 @@ VALUES
     ('VOLTA REDONDA')
 ON CONFLICT DO NOTHING;
 
+-- Tabela: funcoes (cargos)
+CREATE TABLE public.funcoes (
+    id SERIAL PRIMARY KEY,
+    nome VARCHAR(255) NOT NULL UNIQUE
+)
+TABLESPACE pg_default;
+
+ALTER TABLE public.funcoes
+    OWNER TO postgres;
+
+-- Populando a tabela funcoes com algumas funções padrão
+INSERT INTO public.funcoes (nome)
+VALUES
+    ('DESENVOLVEDOR'),
+    ('GERENTE DE PROJETOS'),
+    ('ANALISTA DE SISTEMAS'),
+    ('ADMINISTRADOR DE SISTEMAS'),
+    ('SUPORTE TECNICO'),
+    ('COORDENADOR DE TI'),
+    ('ENGENHEIRO DE SOFTWARE'),
+    ('ARQUITETO DE SOFTWARE')
+ON CONFLICT DO NOTHING;
+
 -- Tabela: curriculo
 CREATE TABLE public.curriculo (
     id SERIAL PRIMARY KEY,
@@ -137,9 +158,8 @@ CREATE TABLE public.curriculo (
     escolaridade VARCHAR(255) NOT NULL,
     tem_ctps BOOLEAN DEFAULT FALSE,
     servico VARCHAR(6) NOT NULL CHECK (servico IN ('SINE', 'MANUAL')),
-    vaga_encaminhada BOOLEAN DEFAULT FALSE,
     cep CHAR(8) CHECK (cep ~ '^\d{8}$'), -- Nova coluna: CEP
-    primeiro_emprego BOOLEAN DEFAULT FALSE, -- Nova coluna: Primeiro Emprego/Jovem Aprendiz
+    pcd BOOLEAN DEFAULT FALSE, 
     data_cadastro TIMESTAMP DEFAULT NOW(), -- Nova coluna: Armazena a data/hora de criação do registro
     CONSTRAINT fk_curriculo_cidade FOREIGN KEY (cidade_id) REFERENCES public.cidades (id)
 )
@@ -154,15 +174,16 @@ CREATE INDEX IF NOT EXISTS idx_curriculo_nome ON public.curriculo (nome);
 CREATE INDEX IF NOT EXISTS idx_curriculo_escolaridade ON public.curriculo (escolaridade);
 CREATE INDEX IF NOT EXISTS idx_curriculo_cidade ON public.curriculo (cidade_id);
 
--- Tabela: experiencias (com restrição de unicidade)
+-- Tabela: experiencias (com restrição de unicidade e referenciando a tabela funcoes)
 CREATE TABLE public.experiencias (
     id SERIAL PRIMARY KEY,
     id_curriculo INTEGER NOT NULL,
-    cargo VARCHAR(255) NOT NULL,
+    funcao_id INTEGER NOT NULL,
     anos_experiencia INTEGER NOT NULL CHECK (anos_experiencia >= 0),
     meses_experiencia INTEGER NOT NULL CHECK (meses_experiencia >= 0 AND meses_experiencia < 12),
     FOREIGN KEY (id_curriculo) REFERENCES public.curriculo (id) ON DELETE CASCADE,
-    CONSTRAINT unique_id_curriculo_cargo UNIQUE (id_curriculo, cargo) -- Garantia de não duplicação por currículo e cargo
+    FOREIGN KEY (funcao_id) REFERENCES public.funcoes (id) ON DELETE CASCADE,
+    CONSTRAINT unique_id_curriculo_funcao UNIQUE (id_curriculo, funcao_id) -- Garantia de não duplicação por currículo e função
 )
 TABLESPACE pg_default;
 
@@ -201,7 +222,6 @@ CREATE TABLE public.usuarios (
     senha VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
     cidade_id INTEGER NOT NULL, -- Altera para cidade_id como chave estrangeira
-    tipo_usuario VARCHAR(20) NOT NULL CHECK (tipo_usuario IN ('admin', 'comum', 'master')),
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT usuarios_email_key UNIQUE (email),
     CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
@@ -212,47 +232,17 @@ TABLESPACE pg_default;
 ALTER TABLE public.usuarios
     OWNER TO postgres;
 
--- Tabela: aprovacoes
-CREATE TABLE public.aprovacoes (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER NOT NULL,
-    cidade VARCHAR(100) NOT NULL,
-    status_aprovacao VARCHAR(20) DEFAULT 'pendente',
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    atualizado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-);
-
--- Tabela: recuperacao_senha
-CREATE TABLE public.recuperacao_senha (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER NOT NULL,
-    token VARCHAR(255) NOT NULL,
-    expiracao TIMESTAMP NOT NULL,
-    usado BOOLEAN DEFAULT FALSE,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-);
-
 -- View: vw_curriculos_detalhados
 CREATE OR REPLACE VIEW public.vw_curriculos_detalhados AS
 SELECT 
     c.id AS curriculo_id,
-    c.cpf,
-    c.nome,
-    c.sexo,
-    c.data_nascimento,
     DATE_PART('year', AGE(c.data_nascimento)) AS idade,
     ci.nome AS cidade,
-    c.telefone,
-    c.telefone_extra,
     c.escolaridade,
     c.tem_ctps,
-    c.servico,
-    c.vaga_encaminhada,
     c.cep, -- Adicionado o CEP
-    c.primeiro_emprego, -- Adicionado Primeiro Emprego/Jovem Aprendiz
-    e.cargo,
+    c.pcd, 
+    f.nome AS funcao,  -- Alterado para usar a função da tabela "funcoes"
     e.anos_experiencia,
     e.meses_experiencia
 FROM 
@@ -262,17 +252,19 @@ LEFT JOIN
 ON 
     c.id = e.id_curriculo
 LEFT JOIN
-    cidades ci ON c.cidade_id = ci.id;
+    cidades ci ON c.cidade_id = ci.id
+LEFT JOIN
+    funcoes f ON e.funcao_id = f.id;  -- Nova junção para a tabela de funções
 
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
 
+-- Função: filtrar_curriculos
 CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
     p_nome TEXT DEFAULT NULL,
     p_cidade TEXT DEFAULT NULL,
     p_escolaridade TEXT DEFAULT NULL,
-    p_cargo TEXT DEFAULT NULL,
-    p_vaga_encaminhada BOOLEAN DEFAULT NULL,
+    p_funcao TEXT DEFAULT NULL,  -- Alterado para usar a função
     p_tem_ctps BOOLEAN DEFAULT NULL,
     p_servico TEXT DEFAULT NULL,
     p_idade_min INTEGER DEFAULT NULL,
@@ -282,14 +274,14 @@ CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
     p_sexo TEXT DEFAULT NULL,
     p_cpf TEXT DEFAULT NULL,
     p_cep TEXT DEFAULT NULL,
-    p_primeiro_emprego BOOLEAN DEFAULT NULL,
-    p_telefone TEXT DEFAULT NULL, -- Novo parâmetro para Telefone
-    p_telefone_extra TEXT DEFAULT NULL, -- Novo parâmetro para Telefone Extra
+    p_pcd BOOLEAN DEFAULT NULL,
+    p_telefone TEXT DEFAULT NULL,
+    p_telefone_extra TEXT DEFAULT NULL,
     p_limite INTEGER DEFAULT 10,
     p_offset INTEGER DEFAULT 0
 )
 RETURNS TABLE (
-    curriculo_id INTEGER,
+    cpf CHAR(11),
     nome TEXT,
     idade INTEGER,
     telefone TEXT,
@@ -297,17 +289,16 @@ RETURNS TABLE (
     cidade TEXT,
     escolaridade TEXT,
     tem_ctps TEXT,
-    vaga_encaminhada TEXT,
     cep TEXT,
-    primeiro_emprego BOOLEAN,
-    cargo TEXT,
+    pcd BOOLEAN,
+    funcao TEXT,  -- Usando a função de "funcoes"
     anos_experiencia INTEGER,
     meses_experiencia INTEGER
 ) AS $$
 BEGIN
     RETURN QUERY
     SELECT 
-        c.id AS curriculo_id,
+        c.cpf::CHAR(11),
         c.nome::TEXT, 
         FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT AS idade,
         c.telefone::TEXT,  
@@ -315,10 +306,9 @@ BEGIN
         ci.nome::TEXT AS cidade,  
         c.escolaridade::TEXT,  
         CASE WHEN c.tem_ctps THEN 'Sim' ELSE 'Não' END::TEXT AS tem_ctps,  
-        CASE WHEN c.vaga_encaminhada THEN 'Sim' ELSE 'Não' END::TEXT AS vaga_encaminhada,  
         c.cep::TEXT, 
-        c.primeiro_emprego, 
-        e.cargo::TEXT,  
+        c.pcd, 
+        f.nome::TEXT AS funcao,  -- Referenciando a função
         e.anos_experiencia,
         e.meses_experiencia
     FROM 
@@ -327,12 +317,13 @@ BEGIN
         experiencias e ON c.id = e.id_curriculo
     LEFT JOIN 
         cidades ci ON c.cidade_id = ci.id
+    LEFT JOIN
+        funcoes f ON e.funcao_id = f.id  -- Junção para função
     WHERE 
         (p_nome IS NULL OR c.nome ILIKE '%' || p_nome || '%') AND
         (p_cidade IS NULL OR ci.nome ILIKE '%' || p_cidade || '%') AND
         (p_escolaridade IS NULL OR c.escolaridade = p_escolaridade) AND
-        (p_cargo IS NULL OR (e.cargo IS NOT NULL AND e.cargo ILIKE '%' || p_cargo || '%')) AND
-        (p_vaga_encaminhada IS NULL OR c.vaga_encaminhada = p_vaga_encaminhada) AND
+        (p_funcao IS NULL OR f.nome ILIKE '%' || p_funcao || '%') AND  -- Filtrando por função
         (p_tem_ctps IS NULL OR c.tem_ctps = p_tem_ctps) AND
         (p_servico IS NULL OR c.servico = p_servico) AND
         (p_idade_min IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT >= p_idade_min) AND
@@ -344,37 +335,9 @@ BEGIN
         (p_sexo IS NULL OR c.sexo = p_sexo) AND
         (p_cpf IS NULL OR c.cpf = p_cpf) AND
         (p_cep IS NULL OR c.cep = p_cep) AND
-        (p_primeiro_emprego IS NULL OR c.primeiro_emprego = p_primeiro_emprego) AND
+        (p_pcd IS NULL OR c.pcd = p_pcd) AND
         (p_telefone IS NULL OR TRIM(c.telefone) LIKE '%' || TRIM(p_telefone) || '%') AND 
         (p_telefone_extra IS NULL OR TRIM(c.telefone_extra) LIKE '%' || TRIM(p_telefone_extra) || '%')
-
     LIMIT p_limite OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql;
-
--- Nova tabela: notificacoes
-CREATE TABLE public.notificacoes (
-    id SERIAL PRIMARY KEY,
-    usuario_id INTEGER NOT NULL,
-    evento VARCHAR(255) NOT NULL,
-    descricao TEXT,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    lido BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-);
-
--- Índices para melhorar consultas na tabela notificacoes
-CREATE INDEX IF NOT EXISTS idx_notificacoes_usuario_id ON public.notificacoes (usuario_id);
-CREATE INDEX IF NOT EXISTS idx_notificacoes_evento ON public.notificacoes (evento);
-CREATE INDEX IF NOT EXISTS idx_notificacoes_lido ON public.notificacoes (lido);
-
--- Tabela: logs_auditoria
-CREATE TABLE public.logs_auditoria (
-    id SERIAL PRIMARY KEY,
-    notificacao_id INTEGER NOT NULL,
-    usuario_id INTEGER NOT NULL,
-    acao VARCHAR(20) NOT NULL CHECK (acao IN ('aprovado', 'rejeitado')),
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (notificacao_id) REFERENCES public.aprovacoes (id) ON DELETE CASCADE,
-    FOREIGN KEY (usuario_id) REFERENCES public.usuarios (id) ON DELETE CASCADE
-);

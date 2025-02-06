@@ -19,8 +19,8 @@ class ChartLoaderThread(QThread):
         charts_data = [
             ("Currículos por Cidade", self.curriculo_model.get_curriculos_por_cidade(self.filtro), "bar"),
             ("Distribuição de Escolaridade", self.curriculo_model.get_escolaridade_distribuicao(self.filtro), "barh"),                
-            ("Cargos Mais Populares", self.curriculo_model.get_top_cargos(self.filtro), "sorted_bar"),
-            ("Primeiro Emprego vs Experientes", self.curriculo_model.get_primeiro_emprego_distribuicao(self.filtro), "pie"),
+            ("Funções Mais Populares", self.curriculo_model.get_top_cargos(self.filtro), "sorted_bar"),
+            ("Primeiro Emprego vs Experientes", self.curriculo_model.get_pcd_distribuicao(self.filtro), "pie"),
             ("Idade vs Experiência", self.curriculo_model.get_experiencia_por_idade(self.filtro), "experience_age")
         ]
         self.charts_ready.emit(charts_data)
@@ -65,7 +65,7 @@ class DashboardWidget(QWidget):
         self.charts_data = [
             ("Currículos por Cidade", "bar"),
             ("Distribuição de Escolaridade", "barh"),
-            ("Cargos Mais Populares", "sorted_bar"),
+            ("Funções Mais Populares", "sorted_bar"),
             ("Primeiro Emprego vs Experientes", "pie"),
             ("Idade vs Experiência", "experience_age")
         ]
@@ -129,8 +129,8 @@ class DashboardWidget(QWidget):
         chart_methods = {
             "bar": self.curriculo_model.get_curriculos_por_cidade,
             "barh": self.curriculo_model.get_escolaridade_distribuicao,
-            "sorted_bar": self.curriculo_model.get_top_cargos,
-            "pie": self.curriculo_model.get_primeiro_emprego_distribuicao,
+            "sorted_bar": self.curriculo_model.get_top_funcoes,
+            "pie": self.curriculo_model.get_pcd_distribuicao,
             "experience_age": self.curriculo_model.get_experiencia_por_idade,
         }
 

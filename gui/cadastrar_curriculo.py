@@ -5,7 +5,7 @@ from PySide6.QtCore import Qt, QEvent, QDate
 from PySide6.QtGui import QKeyEvent, QIcon
 import re
 from models.curriculo_model import CurriculoModel
-
+from gui.busca_cep import consultar_cep  # Já importado corretamente
 
 class CadastroWidget(QWidget):
     def __init__(self, db_connection):
@@ -20,7 +20,8 @@ class CadastroWidget(QWidget):
 
     def setup_ui(self):
         self.experiencia_count = 0
-        self.max_experiencias = 99
+        self.max_experiencias = 3
+        self.funcoes = self.carregar_funcoes()  # Carregar as funções ao inicializar a interface
 
         main_layout = QVBoxLayout(self)
 
@@ -66,45 +67,42 @@ class CadastroWidget(QWidget):
             ],
             form_layout, 8
         )
-
+        
         # Experiência Section
         experiencia_label = QLabel("EXPERIÊNCIA")
         experiencia_label.setStyleSheet("font-size: 1.5em; font-weight: bold; margin-top: 15px;")
-        form_layout.addWidget(experiencia_label, 9, 0, 1, 2)
+        form_layout.addWidget(experiencia_label, 10, 0, 1, 2)
 
         # Checkbox de Primeiro Emprego
-        self.primeiro_emprego_input = QCheckBox("")
-        form_layout.addWidget(QLabel("PRIMEIRO EMPREGO / JOVEM APRENDIZ :"), 10, 0)
-        form_layout.addWidget(self.primeiro_emprego_input, 10, 1)
+        self.pcd_input = QCheckBox("")
+        form_layout.addWidget(QLabel("PCD :"), 11, 0)
+        form_layout.addWidget(self.pcd_input, 11, 1)
 
         # Layout para experiências
         self.experiencias_layout = QVBoxLayout()
-        form_layout.addLayout(self.experiencias_layout, 11, 0, 1, 2)
+        form_layout.addLayout(self.experiencias_layout, 12, 0, 1, 2)
 
         # Ajustando o botão "ADICIONAR EXPERIÊNCIA"
         self.add_experiencia_button = QPushButton(" + ADICIONAR EXPERIÊNCIA")
         self.add_experiencia_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.add_experiencia_button.clicked.connect(self.add_experiencia)
-        form_layout.addWidget(self.add_experiencia_button, 12, 0, 1, 2)
+        self.add_experiencia_button.setStyleSheet(self._button_stylesheet())
+        
+        form_layout.addWidget(self.add_experiencia_button, 13, 0, 1, 2, Qt.AlignCenter)
 
-        self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 13)
-
-        self.vaga_encaminhada_input = QCheckBox("")
-        form_layout.addWidget(QLabel("VAGA ENCAMINHADA :"), 14, 0)
-        form_layout.addWidget(self.vaga_encaminhada_input, 14, 1)
+        self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 14)
 
         main_layout.addLayout(form_layout)
 
-        self.cadastrar_button = QPushButton("CADASTRAR")
+        self.cadastrar_button = QPushButton("CADASTRAR CURRÍCULO")
         self.cadastrar_button.clicked.connect(self.cadastrar_dados)
         self.cadastrar_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.cadastrar_button.setMinimumSize(150, 40)  # Tamanho mínimo, mas pode expandir
-        self.cadastrar_button.setStyleSheet("background-color: #0073CF; color: white; padding: 10px; font-size: 1em;")
+        self.cadastrar_button.setStyleSheet(self._button_stylesheet())
 
-        self.limpar_button = QPushButton("LIMPAR")
+        self.limpar_button = QPushButton("LIMPAR FORMULÁRIO")
         self.limpar_button.clicked.connect(self.limpar_formulario)
         self.limpar_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        self.limpar_button.setStyleSheet("background-color: #dcdcdc; color: black; padding: 10px; font-size: 1em;")
+        self.limpar_button.setStyleSheet(self._button_stylesheet())
 
         # Organizando os botões lado a lado
         button_layout = QHBoxLayout()
@@ -116,8 +114,43 @@ class CadastroWidget(QWidget):
         # Adiciona experiência inicial
         self.add_experiencia()
 
+        # Conectar o campo CEP com a função de consulta
+        self.cep_input.editingFinished.connect(lambda: consultar_cep(self.cep_input, self.cidade_input))
+
         # Configura a ordem de tabulação
         self.configure_tab_order()
+
+    def carregar_funcoes(self):
+        try:
+            funcoes_raw = self.curriculo_model.listar_funcao()
+            return funcoes_raw if isinstance(funcoes_raw, list) else ["SELECIONE UMA FUNÇÃO"]
+        except Exception as e:
+            QMessageBox.critical(self, "Erro", f"Erro ao listar funções: {e}")
+            return ["SELECIONE UMA FUNÇÃO"]
+
+    def _button_stylesheet(self):
+        return """
+            QPushButton {
+                text-align: center;
+                border-radius: 10px;  /* Bordas mais arredondadas */
+                font-size: 16px;  /* Texto menor */
+                font-weight: bold;
+                color: white;
+                border: 2px solid #026bc7;  /* Cor da borda */
+                background-color: #026bc7;
+                padding: 12px 16px;  /* Botão menor, com menos espaçamento interno */
+                outline: none;
+                width: 250px;  /* Largura fixa para os botões */
+                min-width: 120px;  /* Largura mínima do botão */
+                max-width: 200px;  /* Máxima largura para os botões, se necessário */
+            }
+            QPushButton:hover {
+                background-color: #367dba;
+            }
+            QPushButton:pressed {
+                background-color: #0056A1;
+            }
+        """
 
     def create_line_edit(self, placeholder, label, layout, row, mask=None):
         line_edit = QLineEdit()
@@ -205,12 +238,21 @@ class CadastroWidget(QWidget):
             self.nome_status_label.setStyleSheet("color: orange;")
 
     def add_experiencia(self):
+        if self.experiencia_count >= self.max_experiencias:
+            QMessageBox.warning(self, "Limite de Experiências", f"Você pode adicionar no máximo {self.max_experiencias} experiências.")
+            return
+        
         layout = QHBoxLayout()
-        cargo_input = QLineEdit()
-        cargo_input.setPlaceholderText("CARGO")
-        cargo_input.setStyleSheet("font-size: 1em; height: 2em;")
 
-        cargo_input.textChanged.connect(lambda text: cargo_input.setText(text.upper()))
+        # Adiciona ComboBox para seleção de função
+        funcao_combo_box = QComboBox()
+        funcao_combo_box.addItems(self.funcoes)  # Usa a lista de funções carregada
+        funcao_combo_box.setEditable(True)  # Permite a edição manual
+        funcao_combo_box.setStyleSheet("font-size: 1em; height: 2em;")
+        funcao_combo_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
+        # Converte texto em maiúsculo ao digitar
+        funcao_combo_box.lineEdit().textChanged.connect(lambda text: funcao_combo_box.lineEdit().setText(text.upper()))
 
         anos_input = QSpinBox()
         anos_input.setRange(0, 50)
@@ -227,8 +269,8 @@ class CadastroWidget(QWidget):
         remove_button = QPushButton("REMOVER")
         remove_button.clicked.connect(lambda: self.remove_experiencia(layout))
 
-        layout.addWidget(QLabel("CARGO:"))
-        layout.addWidget(cargo_input)
+        layout.addWidget(QLabel("FUNÇÃO:"))
+        layout.addWidget(funcao_combo_box)
         layout.addWidget(QLabel("ANOS:"))
         layout.addWidget(anos_input)
         layout.addWidget(QLabel("MESES:"))
@@ -239,7 +281,8 @@ class CadastroWidget(QWidget):
         self.experiencias_layout.addLayout(layout)
         self.experiencia_count += 1
 
-        cargo_input.installEventFilter(self)
+        # Para garantir a tabulação entre os campos
+        funcao_combo_box.installEventFilter(self)
         anos_input.installEventFilter(self)
         meses_input.installEventFilter(self)
         ctps_checkbox.installEventFilter(self)
@@ -255,14 +298,6 @@ class CadastroWidget(QWidget):
         self.experiencias_layout.removeItem(layout)
         self.experiencia_count -= 1
 
-    def obter_id_cidade(self, nome_cidade):
-        query = "SELECT id FROM public.cidades WHERE nome = %s"
-        resultado = self.db.execute_query(query, (nome_cidade,), fetch_one=True)
-        if resultado:
-            return resultado['id']
-        else:
-            raise ValueError("Cidade não encontrada.")
-
     def cadastrar_dados(self):
         try:
             # Coleta os dados do formulário principal
@@ -274,9 +309,8 @@ class CadastroWidget(QWidget):
             telefone = self.telefone_input.text().strip()
             telefone_extra = self.telefone_extra_input.text().strip()
             escolaridade = self.escolaridade_input.currentText().upper()
-            vaga_encaminhada = self.vaga_encaminhada_input.isChecked()
             servico = self.servico_input.currentText().upper()
-            primeiro_emprego = self.primeiro_emprego_input.isChecked()
+            pcd = self.pcd_input.isChecked()
             cep = self.cep_input.text().strip()
 
             # Validação de CPF e CEP
@@ -300,24 +334,24 @@ class CadastroWidget(QWidget):
             experiencias = []
             for i in range(self.experiencias_layout.count()):
                 layout = self.experiencias_layout.itemAt(i).layout()
-                cargo_input = layout.itemAt(1).widget()
+                funcao_input = layout.itemAt(1).widget()
                 anos_input = layout.itemAt(3).widget()
                 meses_input = layout.itemAt(5).widget()
 
-                cargo = cargo_input.text().strip()
+                funcao = funcao_input.text().strip()
                 anos = anos_input.value()
                 meses = meses_input.value()
 
-                if not cargo:
-                    QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: Cargo não pode estar vazio.")
+                if not funcao:
+                    QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: funcão não pode estar vazio.")
                     return
 
                 if meses < 0 or meses > 11:
                     QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: Meses deve estar entre 0 e 11.")
                     return
 
-                # Adiciona a experiência como tupla (cargo, anos, meses)
-                experiencias.append((cargo.upper(), anos, meses))
+                # Adiciona a experiência como tupla (funcao, anos, meses)
+                experiencias.append((funcao.upper(), anos, meses))
 
             # Insere os dados no banco
             self.curriculo_model.insert_curriculo(
@@ -329,11 +363,10 @@ class CadastroWidget(QWidget):
                 telefone=telefone,
                 telefone_extra=telefone_extra,
                 escolaridade=escolaridade,
-                vaga_encaminhada=vaga_encaminhada,
                 tem_ctps=any(anos > 0 or meses > 0 for _, anos, meses in experiencias),
                 experiencias=experiencias,
                 servico=servico,
-                primeiro_emprego=primeiro_emprego,
+                pcd=pcd,
                 cep=cep_numerico
             )
 
@@ -356,8 +389,7 @@ class CadastroWidget(QWidget):
         self.telefone_extra_input.clear()
         self.escolaridade_input.setCurrentIndex(0)
         self.servico_input.setCurrentIndex(0)
-        self.vaga_encaminhada_input.setChecked(False)
-        self.primeiro_emprego_input.setChecked(False)  # Reseta o checkbox para desmarcado
+        self.pcd_input.setChecked(False)  # Reseta o checkbox para desmarcado
         self.cep_input.clear()  # Limpa o campo de CEP
         while self.experiencias_layout.count():
             layout = self.experiencias_layout.takeAt(0).layout()
@@ -379,12 +411,12 @@ class CadastroWidget(QWidget):
         # Configuração dinâmica para os campos de experiências
         for i in range(self.experiencias_layout.count()):
             layout = self.experiencias_layout.itemAt(i).layout()
-            cargo_input = layout.itemAt(1).widget()
+            funcao_input = layout.itemAt(1).widget()
             anos_input = layout.itemAt(3).widget()
             meses_input = layout.itemAt(5).widget()
 
-            self.setTabOrder(previous_widget, cargo_input)
-            self.setTabOrder(cargo_input, anos_input)
+            self.setTabOrder(previous_widget, funcao_input)
+            self.setTabOrder(funcao_input, anos_input)
             self.setTabOrder(anos_input, meses_input)
 
             previous_widget = meses_input  # Atualiza o último widget na cadeia

@@ -45,7 +45,7 @@ class EditDialog(QDialog):
         self.servico_input = QComboBox()
         self.servico_input.addItems(["SINE", "MANUAL"])
         self.servico_input.setEditable(True)  # Torna o combo box editável
-        self.cargo_input = QLineEdit()
+        self.funcao_input = QLineEdit()
         self.anos_experiencia_input = QSpinBox()
         self.anos_experiencia_input.setRange(0, 50)
         self.meses_experiencia_input = QSpinBox()
@@ -68,7 +68,7 @@ class EditDialog(QDialog):
             ("TEM CTPS", self.tem_ctps_input),
             ("VAGA ENCAMINHADA", self.vaga_encaminhada_input),
             ("SERVIÇO", self.servico_input),
-            ("CARGO", self.cargo_input),
+            ("FUNÇÃO", self.funcao_input),
             ("ANOS DE EXPERIÊNCIA", self.anos_experiencia_input),
             ("MESES DE EXPERIÊNCIA", self.meses_experiencia_input),
             ("PRIMEIRO EMPREGO", self.primeiro_emprego_input),
@@ -146,7 +146,7 @@ class EditDialog(QDialog):
                 self.primeiro_emprego_input.setCurrentText("SIM" if curriculo.get("primeiro_emprego") else "NÃO")
 
                 if experiencias:
-                    self.cargo_input.setText(experiencias[0].get("cargo", ""))
+                    self.funcao_input.setText(experiencias[0].get("funcao", ""))
                     self.anos_experiencia_input.setValue(experiencias[0].get("anos_experiencia", 0))
                     self.meses_experiencia_input.setValue(experiencias[0].get("meses_experiencia", 0))
             else:
@@ -169,7 +169,7 @@ class EditDialog(QDialog):
                 self.nome_input, self.cpf_input, self.sexo_input, self.data_nascimento_input,
                 self.telefone_input, self.telefone_extra_input, self.cidade_input,
                 self.escolaridade_input, self.tem_ctps_input, self.vaga_encaminhada_input,
-                self.servico_input, self.cargo_input, self.anos_experiencia_input,
+                self.servico_input, self.funcao_input, self.anos_experiencia_input,
                 self.meses_experiencia_input, self.primeiro_emprego_input, self.cep_input
             ]
 
@@ -200,7 +200,7 @@ class EditDialog(QDialog):
         tem_ctps = self.tem_ctps_input.currentText() == "SIM"
         vaga_encaminhada = self.vaga_encaminhada_input.currentText() == "SIM"
         servico = self.servico_input.currentText()
-        cargo = self.cargo_input.text().strip()
+        funcao = self.funcao_input.text().strip()
         anos_experiencia = self.anos_experiencia_input.value()
         meses_experiencia = self.meses_experiencia_input.value()
 
@@ -232,7 +232,7 @@ class EditDialog(QDialog):
 
                 # Atualiza as experiências (com limpeza e reinserção ou UPSERT)
                 self.curriculo_model.insert_experiencias(
-                    self.curriculo_id, [(cargo, anos_experiencia, meses_experiencia)]
+                    self.curriculo_id, [(funcao, anos_experiencia, meses_experiencia)]
                 )
 
                 QMessageBox.information(self, "SUCESSO", "CURRÍCULO ATUALIZADO COM SUCESSO!")

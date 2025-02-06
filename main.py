@@ -9,15 +9,11 @@ from PySide6.QtGui import QIcon
 from gui.configuracoes import ConfiguracoesWidget
 from gui.cadastrar_curriculo import CadastroWidget
 from gui.consultar_curriculo import ConsultaWidget
-from gui.notificacoes import TelaNotificacoes
 from gui.login_cadastro import LoginCadastroDialog  # Tela de login/cadastro
 from gui.dashboard import DashboardWidget
 from database.connection import DatabaseConnection
 from models.usuario_model import UsuarioModel
-from models.notificacao_model import NotificacaoModel
 from models.curriculo_model import CurriculoModel  # 🔥 Importando o CurriculoModel
-
-
 
 class MainWindow(QMainWindow):
     def __init__(self, db_connection, usuario_id):
@@ -51,9 +47,8 @@ class MainWindow(QMainWindow):
         self.db_connection = db_connection
         self.usuario_model = UsuarioModel(self.db_connection)
 
-        # Inicializar modelo de aprovações
+        # Inicializar modelo de curriculo
         self.db_connection = db_connection
-        self.notificacao_model = NotificacaoModel(self.db_connection)
 
         self.curriculo_model = CurriculoModel(self.db_connection)  # ✅ Criando instância correta
 
@@ -112,43 +107,6 @@ class MainWindow(QMainWindow):
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
 
-        # Top Bar
-        self.top_bar = QWidget()
-        self.top_bar.setFixedHeight(50)
-        self.top_bar.setStyleSheet("background-color: #191970;")
-        self.top_bar_layout = QHBoxLayout(self.top_bar)
-        self.top_bar_layout.setContentsMargins(10, 0, 10, 0)
-        self.top_bar_layout.setSpacing(10)
-
-        # Botão de notificações na top bar
-        self.notification_button = QPushButton()
-        self.notification_button.setIcon(QIcon(self._get_icon_path("notification-icon")))
-        self.notification_button.setIconSize(QSize(24, 24))
-        self.notification_button.setFixedSize(40, 40)
-        self.notification_button.setStyleSheet("background-color: transparent; border: none; position: relative;")
-        self.notification_button.clicked.connect(self._show_notifications)
-
-        # Label para o contador de notificações
-        self.notification_count_label = QLabel("0", self.notification_button)  # Associada ao botão
-        self.notification_count_label.setFixedSize(20, 20)
-        self.notification_count_label.setAlignment(Qt.AlignCenter)
-        self.notification_count_label.setStyleSheet("""
-            background-color: red;
-            color: white;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-            position: absolute;
-        """)
-        self.notification_count_label.move(self.notification_button.width() - 20, 0)  # Posição fixa relativa ao botão
-        self.notification_count_label.setVisible(False)  # Ocultar inicialmente
-
-        self.top_bar_layout.addStretch()
-        self.top_bar_layout.addSpacing(10)  # Espaçamento extra antes do botão
-        self.top_bar_layout.addWidget(self.notification_button)
-
-        body_layout.addWidget(self.top_bar)
-
         # ✅ Inicializar a área de conteúdo principal
         self.content_area = QStackedWidget()
 
@@ -157,7 +115,6 @@ class MainWindow(QMainWindow):
             self.usuario_model,
             self.curriculo_model,
             self._navigate,
-            usuario_logado['tipo_usuario'],  # Tipo do usuário
             usuario_logado['id'],  # Passa o ID do usuário logado
             usuario_logado.get('cidade_admin')  # Cidade do admin (se aplicável)
         )
@@ -182,29 +139,6 @@ class MainWindow(QMainWindow):
         main_layout.addLayout(body_layout)
 
         self._navigate("Página Inicial")
-
-        # Atualiza o contador de notificações periodicamente
-        self._update_notification_count()
-        self.notification_timer = QTimer()
-        self.notification_timer.timeout.connect(self._update_notification_count)
-        self.notification_timer.start(5000)
-
-    def _show_notifications(self):
-        try:
-            notificacoes = TelaNotificacoes(self.notificacao_model, self.usuario_id, usuario_logado['tipo_usuario'])
-            notificacoes.exec()
-            self._update_notification_count()
-        except Exception as e:
-            logging.error(f"Erro ao mostrar notificações: {e}")
-
-    def _update_notification_count(self):
-        try:
-            notificacoes = self.notificacao_model.listar_aprovacoes_pendentes(tipo_usuario=usuario_logado['tipo_usuario'], usuario_id=self.usuario_id)
-            count = len(notificacoes)
-            self.notification_count_label.setText(str(count))
-            self.notification_count_label.setVisible(count > 0)
-        except Exception as e:
-            logging.error(f"Erro ao atualizar contador de notificações: {e}")
 
     def _confirm_exit(self):
         response = QMessageBox.question(
