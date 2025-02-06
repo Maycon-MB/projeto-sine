@@ -1,6 +1,5 @@
 from database.connection import DatabaseConnection
 from email_utils import enviar_email
-from models.notificacao_model import NotificacaoModel
 import bcrypt
 import logging
 
@@ -8,7 +7,6 @@ import logging
 class UsuarioModel:
     def __init__(self, db_connection):
         self.db = db_connection
-        self.notificacao_model = NotificacaoModel(db_connection)  # Integração com NotificacaoModel
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     def verificar_email_existente(self, email):
@@ -28,7 +26,7 @@ class UsuarioModel:
             return result['id']
         raise ValueError(f"Cidade '{cidade_nome}' não encontrada.")
 
-    def cadastrar_usuario(self, usuario, senha, email, cidade_id, tipo_usuario):
+    def cadastrar_usuario(self, usuario, senha, email, cidade_id):
         try:
             usuario = usuario.upper()
             email = email.upper()
@@ -42,15 +40,13 @@ class UsuarioModel:
             senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()  # Retorna uma string
 
             query = """
-            INSERT INTO usuarios (usuario, senha, email, cidade_id, tipo_usuario)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO usuarios (usuario, senha, email, cidade_id)
+            VALUES (%s, %s, %s, %s)
             RETURNING id;
             """
-            result = self.db.execute_query(query, (usuario, senha_hash, email, cidade_id, tipo_usuario), fetch_one=True)
-
-            # Envia aprovação pendente para o admin/master
-            self.notificacao_model.enviar_aprovacao(result['id'], cidade_id)
-            logging.info(f"Usuário cadastrado com ID: {result['id']}, aguardando aprovação.")
+            result = self.db.execute_query(query, (usuario, senha_hash, email, cidade_id), fetch_one=True)
+            
+            logging.info(f"Usuário cadastrado com ID: {result['id']}.")
             return result['id']
         except Exception as e:
             logging.error(f"Erro ao cadastrar usuário: {e}")
@@ -127,7 +123,7 @@ class UsuarioModel:
 
     def buscar_usuario_por_login(self, usuario):
         query = """
-        SELECT id, usuario, email, cidade_id, tipo_usuario, senha
+        SELECT id, usuario, email, cidade_id, senha
         FROM usuarios
         WHERE usuario = %s OR email = %s
         """

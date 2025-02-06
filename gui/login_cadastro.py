@@ -232,7 +232,6 @@ class LoginCadastroDialog(QDialog):
                         'usuario': usuario_info['usuario'],
                         'email': usuario_info['email'],
                         'cidade_id': usuario_info['cidade_id'],
-                        'tipo_usuario': usuario_info['tipo_usuario'],
                     }
 
                     self.accept()
