@@ -135,14 +135,21 @@ ALTER TABLE public.funcoes
 -- Populando a tabela funcoes com algumas funções padrão
 INSERT INTO public.funcoes (nome)
 VALUES
-    ('DESENVOLVEDOR'),
-    ('GERENTE DE PROJETOS'),
-    ('ANALISTA DE SISTEMAS'),
-    ('ADMINISTRADOR DE SISTEMAS'),
-    ('SUPORTE TECNICO'),
-    ('COORDENADOR DE TI'),
-    ('ENGENHEIRO DE SOFTWARE'),
-    ('ARQUITETO DE SOFTWARE')
+    ('AUXILIAR DE LIMPEZA'),
+    ('AJUDANTE DE COZINHA'),
+    ('ATENDENTE DE LOJA'),
+    ('ATENDENTE DE LANCHONETE'),
+    ('AUXILIAR DE PRODUÇÃO'),
+    ('AUXILIAR DE LOGÍSTICA'),
+    ('CAIXA'),
+    ('CONSULTOR DE VENDAS'),
+    ('COZINHEIRO'),
+    ('EMPACOTADOR'),
+    ('EMPREGADO DOMÉSTICO')
+    ('ESTOQUISTA'),
+    ('FISCAL DE LOJA'),
+    ('FISCAL DE PREVENÇÃO DE PERDAS'),
+    ('GARÇOM')
 ON CONFLICT DO NOTHING;
 
 -- Tabela: curriculo
