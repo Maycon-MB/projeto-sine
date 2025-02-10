@@ -7,7 +7,7 @@ from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHeaderView
 from models.curriculo_model import CurriculoModel
 from gui.editar_curriculo import EditDialog
-
+from gui.busca_cep import consultar_cep
 
 class ConsultaWidget(QWidget):
     def __init__(self, db_connection):
@@ -53,10 +53,10 @@ class ConsultaWidget(QWidget):
         # Tabela de resultados
         self.table = QTableWidget()
         self.table.setColumnCount(14)  # Número de colunas ajustado para incluir novos campos
-        self.table.setHorizontalHeaderLabels([
-            "CPF", "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CEP",
-            "CIDADE", "ESCOLARIDADE", "FUNÇÃO", "ANOS EXP.", "MESES EXP.",
-            "CTPS", "PCD", "AÇÕES"  # Atualizado: PCD substitui Primeiro Emprego
+        self.table.setHorizontalHeaderLabels([ 
+            "CPF", "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CEP", 
+            "CIDADE", "ESCOLARIDADE", "FUNÇÃO", "ANOS EXP.", "MESES EXP.", 
+            "CTPS", "PCD", "AÇÕES" 
         ])
         self.table.setShowGrid(True)
         header = self.table.horizontalHeader()
@@ -100,6 +100,20 @@ class ConsultaWidget(QWidget):
         layout.addLayout(bottom_layout)
 
         self.setLayout(layout)
+
+        # Conectar o campo de CEP ao método que atualiza a cidade
+        self.cep_input.textChanged.connect(self.atualizar_cidade_com_cep)
+
+    def atualizar_cidade_com_cep(self):
+        # Pega o texto do campo de CEP
+        cep = self.cep_input.text()
+        
+        # Verifica se o CEP tem 8 caracteres
+        if len(cep.replace("-", "")) == 8:  # Remove o hífen, se houver
+            consultar_cep(self.cep_input, self.cidade_input)
+        else:
+            # Se o CEP não tem 8 caracteres, não faz a consulta
+            self.cidade_input.clear()  # Limpa o campo de cidade
 
     def create_filter_layout(self):
         filter_layout = QGridLayout()
