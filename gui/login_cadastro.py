@@ -259,14 +259,19 @@ class LoginCadastroDialog(QDialog):
             return
 
         try:
-            # 🔥 Gerar e imprimir o hash para depuração
-            senha_hash = bcrypt.hashpw(senha.encode(), bcrypt.gensalt()).decode()
-            print(f"🔍 Hash gerado no cadastro: {senha_hash}")
-
-            self.usuario_model.cadastrar_usuario(usuario, senha_hash, email, cidade_id, "comum")
+            # Agora passamos a senha diretamente para o método cadastrar_usuario
+            self.usuario_model.cadastrar_usuario(usuario, senha, email, cidade_id)
 
             QMessageBox.information(self, "Cadastro", "Cadastro realizado com sucesso!")
-            self.close()
+
+            # Limpar os campos após o cadastro
+            self.nome_input.clear()
+            self.usuario_input.clear()
+            self.cidade_combobox.setCurrentIndex(0)  # Limpar a ComboBox (se necessário)
+            self.cadastro_email_input.clear()
+            self.cadastro_password_input.clear()
+            self.confirm_password_input.clear()
+
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao realizar cadastro: {e}")
 
