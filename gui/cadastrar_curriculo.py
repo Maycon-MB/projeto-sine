@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QSizePolicy, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QComboBox, QDateEdit, QCheckBox
+    QWidget, QVBoxLayout, QLabel, QSizePolicy, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QComboBox, QDateEdit, QCheckBox, QScrollArea
 )
 from PySide6.QtCore import Qt, QEvent, QDate
 from PySide6.QtGui import QKeyEvent, QIcon
@@ -9,10 +9,6 @@ from gui.busca_cep import consultar_cep  # Já importado corretamente
 
 class CadastroWidget(QWidget):
     def __init__(self, db_connection):
-        """
-        Inicializa o widget de cadastro.
-        :param db_connection: Conexão com o banco de dados.
-        """
         super().__init__()
         self.db_connection = db_connection
         self.curriculo_model = CurriculoModel(self.db_connection)
@@ -21,15 +17,24 @@ class CadastroWidget(QWidget):
     def setup_ui(self):
         self.experiencia_count = 0
         self.max_experiencias = 3
-        self.funcoes = self.carregar_funcoes()  # Carregar as funções ao inicializar a interface
+        self.funcoes = self.carregar_funcoes()
 
+        # Layout principal
         main_layout = QVBoxLayout(self)
+
+        # Criando a área de rolagem
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        # Criando o widget container para o conteúdo dentro da área de rolagem
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
 
         # Título
         title_label = QLabel("CADASTRO DE CURRÍCULO")
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setStyleSheet("font-size: 2em; font-weight: bold; margin-bottom: 10px;")
-        main_layout.addWidget(title_label)
+        content_layout.addWidget(title_label)
 
         # Formulário
         form_layout = QGridLayout()
@@ -67,13 +72,12 @@ class CadastroWidget(QWidget):
             ],
             form_layout, 8
         )
-        
-        # Experiência Section
+
+        # Experiência
         experiencia_label = QLabel("EXPERIÊNCIA")
         experiencia_label.setStyleSheet("font-size: 1.5em; font-weight: bold; margin-top: 15px;")
         form_layout.addWidget(experiencia_label, 10, 0, 1, 2)
 
-        # Checkbox de Primeiro Emprego
         self.pcd_input = QCheckBox("")
         form_layout.addWidget(QLabel("PCD :"), 11, 0)
         form_layout.addWidget(self.pcd_input, 11, 1)
@@ -82,18 +86,17 @@ class CadastroWidget(QWidget):
         self.experiencias_layout = QVBoxLayout()
         form_layout.addLayout(self.experiencias_layout, 12, 0, 1, 2)
 
-        # Ajustando o botão "ADICIONAR EXPERIÊNCIA"
         self.add_experiencia_button = QPushButton(" + ADICIONAR EXPERIÊNCIA")
         self.add_experiencia_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.add_experiencia_button.clicked.connect(self.add_experiencia)
         self.add_experiencia_button.setStyleSheet(self._button_stylesheet())
-        
         form_layout.addWidget(self.add_experiencia_button, 13, 0, 1, 2, Qt.AlignCenter)
 
         self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 14)
 
-        main_layout.addLayout(form_layout)
+        content_layout.addLayout(form_layout)
 
+        # Botões
         self.cadastrar_button = QPushButton("CADASTRAR CURRÍCULO")
         self.cadastrar_button.clicked.connect(self.cadastrar_dados)
         self.cadastrar_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
@@ -104,12 +107,11 @@ class CadastroWidget(QWidget):
         self.limpar_button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         self.limpar_button.setStyleSheet(self._button_stylesheet())
 
-        # Organizando os botões lado a lado
         button_layout = QHBoxLayout()
         button_layout.addWidget(self.cadastrar_button)
         button_layout.addWidget(self.limpar_button)
-        button_layout.setAlignment(Qt.AlignCenter)  # Centraliza os botões
-        main_layout.addLayout(button_layout)
+        button_layout.setAlignment(Qt.AlignCenter)
+        content_layout.addLayout(button_layout)
 
         # Adiciona experiência inicial
         self.add_experiencia()
@@ -119,6 +121,12 @@ class CadastroWidget(QWidget):
 
         # Configura a ordem de tabulação
         self.configure_tab_order()
+
+        # Definir o widget de conteúdo na área de rolagem
+        scroll_area.setWidget(content_widget)
+
+        # Adicionar a área de rolagem ao layout principal
+        main_layout.addWidget(scroll_area)
 
     def carregar_funcoes(self):
         try:
@@ -338,20 +346,21 @@ class CadastroWidget(QWidget):
                 anos_input = layout.itemAt(3).widget()
                 meses_input = layout.itemAt(5).widget()
 
-                funcao = funcao_input.text().strip()
+                funcao_nome = funcao_input.currentText().upper()
+                funcao_id = self.curriculo_model.obter_funcao_id(funcao_nome)
+
+                if not funcao_id:
+                    QMessageBox.warning(self, "Erro", f"Função '{funcao_nome}' não encontrada no banco de dados.")
+                    return
+
                 anos = anos_input.value()
                 meses = meses_input.value()
-
-                if not funcao:
-                    QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: funcão não pode estar vazio.")
-                    return
 
                 if meses < 0 or meses > 11:
                     QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: Meses deve estar entre 0 e 11.")
                     return
 
-                # Adiciona a experiência como tupla (funcao, anos, meses)
-                experiencias.append((funcao.upper(), anos, meses))
+                experiencias.append((funcao_id, anos, meses))
 
             # Insere os dados no banco
             self.curriculo_model.insert_curriculo(

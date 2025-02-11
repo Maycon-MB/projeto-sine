@@ -250,7 +250,7 @@ class CurriculoModel:
         # Insere os dados do currículo
         query_curriculo = """
         INSERT INTO curriculo (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, servico, cep, pcd)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         RETURNING id;
         """
         try:
@@ -263,7 +263,7 @@ class CurriculoModel:
             # Insere as experiências, se houver
             if experiencias:
                 query_experiencia = """
-                INSERT INTO experiencias (id_curriculo, funcao, anos_experiencia, meses_experiencia)
+                INSERT INTO experiencias (id_curriculo, funcao_id, anos_experiencia, meses_experiencia)
                 VALUES (%s, %s, %s, %s);
                 """
                 for experiencia in experiencias:
