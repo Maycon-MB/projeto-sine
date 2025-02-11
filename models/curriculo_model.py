@@ -171,7 +171,7 @@ class CurriculoModel:
         SELECT c.id AS curriculo_id, c.nome, c.cpf, c.sexo, c.data_nascimento, ci.nome AS cidade, 
             c.telefone, c.telefone_extra, c.escolaridade, c.servico, 
             c.cep, c.pcd, c.tem_ctps, -- Incluindo os novos campos
-            e.funcao, e.anos_experiencia, e.meses_experiencia
+            e.funcao_id, e.anos_experiencia, e.meses_experiencia
         FROM curriculo c
         LEFT JOIN experiencias e ON c.id = e.id_curriculo
         LEFT JOIN cidades ci ON c.cidade_id = ci.id
@@ -297,7 +297,7 @@ class CurriculoModel:
         Busca as experiências profissionais associadas a um currículo.
         """
         query = """
-        SELECT funcao, anos_experiencia, meses_experiencia
+        SELECT experiencias.funcao_id, anos_experiencia, meses_experiencia
         FROM experiencias
         WHERE id_curriculo = %s;
         """
@@ -363,7 +363,7 @@ class CurriculoModel:
         Retorna os funcaos mais populares com base na contagem de currículos, aplicando filtros se necessário.
         """
         query = """
-        SELECT experiencias.funcao, COUNT(experiencias.id_curriculo) AS total
+        SELECT experiencias.funcao_id, COUNT(experiencias.id_curriculo) AS total  -- Corrigido para 'funcao_id'
         FROM experiencias
         """
         
@@ -377,11 +377,11 @@ class CurriculoModel:
         if filtro in filtros:
             query += filtros[filtro]
         
-        query += " GROUP BY experiencias.funcao ORDER BY total DESC LIMIT %s;"
+        query += " GROUP BY experiencias.funcao_id ORDER BY total DESC LIMIT %s;"  # Corrigido para 'funcao_id'
 
         try:
             results = self.db.execute_query(query, (limit,), fetch_all=True)
-            return {row['funcao']: row['total'] for row in results}
+            return {row['funcao_id']: row['total'] for row in results}  # Alterado para usar 'funcao_id'
         except Exception as e:
             print(f"Erro ao obter top funcaos: {e}")
             return {}

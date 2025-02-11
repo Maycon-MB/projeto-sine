@@ -313,25 +313,33 @@ class ConsultaWidget(QWidget):
         """
         self.table.setRowCount(len(results))
         for row_idx, row in enumerate(results):
-            for col_idx, key in enumerate([
-                "cpf", "nome", "idade", "cep", "cidade", "escolaridade", 
-                "funcao", "anos_experiencia", "meses_experiencia", "tem_ctps", "pcd"
-            ]):
-                # Para valores booleanos, exibe "Sim" ou "Não"
-                if key in ("tem_ctps", "pcd"):
-                    value = "Sim" if row.get(key) else "Não"
-                else:
-                    value = row.get(key, "")
-
-                # Preenche o valor na célula
+            # Mapeia os dados para as colunas da tabela
+            data = [
+                row.get("cpf", ""),
+                row.get("nome", ""),
+                row.get("idade", ""),
+                row.get("telefone", ""),
+                row.get("telefone_extra", ""),
+                row.get("cep", ""),
+                row.get("cidade", ""),
+                row.get("escolaridade", ""),
+                row.get("funcao", ""),
+                row.get("anos_experiencia", ""),
+                row.get("meses_experiencia", ""),
+                "Sim" if row.get("tem_ctps") else "Não",
+                "Sim" if row.get("pcd") else "Não"
+            ]
+            
+            # Preenche os dados nas células da tabela
+            for col_idx, value in enumerate(data):
                 item = QTableWidgetItem(str(value))
                 item.setTextAlignment(Qt.AlignCenter)
                 self.table.setItem(row_idx, col_idx, item)
 
-            # Botão de edição
+            # Botão de edição na última coluna
             edit_button = QPushButton("EDITAR")
             edit_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.open_edit_dialog(id))
-            self.table.setCellWidget(row_idx, 12, edit_button)  # Ajustado para a nova última coluna
+            self.table.setCellWidget(row_idx, 13, edit_button)  # Última coluna é a de AÇÕES (índice 13)
 
         # Atualiza o total de resultados exibido
         self.total_label.setText(f"TOTAL DE CURRÍCULOS: {self.total_results}")
