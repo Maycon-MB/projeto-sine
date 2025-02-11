@@ -1,10 +1,13 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QGridLayout, QFrame, 
-    QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QGroupBox, QSpacerItem, QSizePolicy
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QGridLayout,
+    QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QScrollArea, QFileDialog, QSpacerItem
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QHeaderView
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
 from models.curriculo_model import CurriculoModel
 from gui.editar_curriculo import EditDialog
 from gui.busca_cep import consultar_cep
@@ -32,7 +35,7 @@ class ConsultaWidget(QWidget):
         filter_layout = self.create_filter_layout()
         layout.addLayout(filter_layout)
 
-        # Layout horizontal para os botões de ação (Buscar e Limpar)
+        # Botões de busca e limpeza
         button_layout = QHBoxLayout()
         button_layout.setAlignment(Qt.AlignCenter)
 
@@ -48,11 +51,26 @@ class ConsultaWidget(QWidget):
         self.clear_button.clicked.connect(self.clear_filters)
         button_layout.addWidget(self.clear_button)
 
+        button_layout.addStretch()
+
+        self.generate_pdf_button = QPushButton("Gerar Relatório")
+        self.generate_pdf_button.setIcon(QIcon("assets/icons/pdf-icon.svg"))
+        self.generate_pdf_button.setStyleSheet(self._button_stylesheet())
+        self.generate_pdf_button.clicked.connect(self.generate_pdf_report)
+        button_layout.addWidget(self.generate_pdf_button)
+
         layout.addLayout(button_layout)
+
+        # Criando área de rolagem para a tabela
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+
+        table_container = QWidget()
+        table_layout = QVBoxLayout(table_container)
 
         # Tabela de resultados
         self.table = QTableWidget()
-        self.table.setColumnCount(14)  # Número de colunas ajustado para incluir novos campos
+        self.table.setColumnCount(14)
         self.table.setHorizontalHeaderLabels([ 
             "CPF", "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CEP", 
             "CIDADE", "ESCOLARIDADE", "FUNÇÃO", "ANOS EXP.", "MESES EXP.", 
@@ -60,29 +78,30 @@ class ConsultaWidget(QWidget):
         ])
         self.table.setShowGrid(True)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
         for col in range(1, self.table.columnCount()):
             header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
-        layout.addWidget(self.table)
 
-        # Layout para total de currículos e paginação
+        table_layout.addWidget(self.table)
+        table_container.setLayout(table_layout)
+        scroll_area.setWidget(table_container)
+
+        layout.addWidget(scroll_area)
+
+        # Total de currículos e paginação
         bottom_layout = QVBoxLayout()
-
         self.total_label = QLabel("TOTAL DE CURRÍCULOS: 0")
         self.total_label.setStyleSheet("font-size: 14px; font-weight: bold; margin-top: 10px;")
         total_layout = QHBoxLayout()
         total_layout.addWidget(self.total_label, alignment=Qt.AlignCenter)
         bottom_layout.addLayout(total_layout)
 
-        # Layout para os botões de paginação
         pagination_layout = QHBoxLayout()
-
         self.previous_button = QPushButton("<< Anterior")
         self.previous_button.setStyleSheet(self._button_stylesheet())
-        self.previous_button.setMinimumWidth(100)
-        self.previous_button.setFixedHeight(38)
-        self.previous_button.clicked.connect(self.previous_page)
         self.previous_button.setEnabled(False)
+        self.previous_button.clicked.connect(self.previous_page)
         pagination_layout.addWidget(self.previous_button, alignment=Qt.AlignLeft)
 
         self.page_label = QLabel("Página 1")
@@ -90,19 +109,14 @@ class ConsultaWidget(QWidget):
 
         self.next_button = QPushButton("Próximo >>")
         self.next_button.setStyleSheet(self._button_stylesheet())
-        self.next_button.setMinimumWidth(100)
-        self.next_button.setFixedHeight(38)
-        self.next_button.clicked.connect(self.next_page)
         self.next_button.setEnabled(False)
+        self.next_button.clicked.connect(self.next_page)
         pagination_layout.addWidget(self.next_button, alignment=Qt.AlignRight)
 
         bottom_layout.addLayout(pagination_layout)
         layout.addLayout(bottom_layout)
 
         self.setLayout(layout)
-
-        # Conectar o campo de CEP ao método que atualiza a cidade
-        self.cep_input.textChanged.connect(self.atualizar_cidade_com_cep)
 
     def atualizar_cidade_com_cep(self):
         # Pega o texto do campo de CEP
@@ -376,3 +390,71 @@ class ConsultaWidget(QWidget):
         self.pcd_input.setCurrentIndex(0)  # Limpar filtro de PCD
 
         self.search_curriculos()
+
+    def generate_pdf_report(self):
+        # Captura os dados da tabela
+        rows = []
+        for row in range(self.table.rowCount()):
+            row_data = []
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                row_data.append(item.text() if item else "")
+            rows.append(row_data)
+
+        # Criação do arquivo PDF
+        pdf_filename, _ = QFileDialog.getSaveFileName(
+            self, "Salvar Relatório", "", "PDF Files (*.pdf)"
+        )
+        if not pdf_filename:
+            return
+
+        if not pdf_filename.endswith(".pdf"):
+            pdf_filename += ".pdf"
+
+        c = canvas.Canvas(pdf_filename, pagesize=letter)
+        width, height = letter
+
+        # Definir a posição inicial no PDF
+        y_position = height - 40
+        margin = 40
+
+        # Título
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(margin, y_position, "Relatório de Currículos Consultados")
+        y_position -= 20
+
+        # Cabeçalho da tabela
+        c.setFont("Helvetica-Bold", 10)
+        header = [
+            "CPF", "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CEP",
+            "CIDADE", "ESCOLARIDADE", "FUNÇÃO", "ANOS EXP.", "MESES EXP.",
+            "CTPS", "PCD"
+        ]
+        col_widths = [50, 100, 40, 80, 80, 60, 100, 120, 100, 50, 50, 60, 50]
+
+        for col_idx, header_text in enumerate(header):
+            c.drawString(margin + sum(col_widths[:col_idx]), y_position, header_text)
+
+        y_position -= 20
+
+        # Dados da tabela
+        c.setFont("Helvetica", 10)
+        for row in rows:
+            for col_idx, cell_text in enumerate(row):
+                c.drawString(margin + sum(col_widths[:col_idx]), y_position, str(cell_text))
+            y_position -= 15
+
+            # Verificar se precisa de nova página
+            if y_position < 40:
+                c.showPage()
+                c.setFont("Helvetica", 10)
+                y_position = height - 40
+                for col_idx, header_text in enumerate(header):
+                    c.drawString(margin + sum(col_widths[:col_idx]), y_position, header_text)
+                y_position -= 20
+
+        # Salvar o PDF
+        c.save()
+
+        # Notificar o usuário
+        QMessageBox.information(self, "Sucesso", "Relatório gerado com sucesso!")
