@@ -266,12 +266,18 @@ LEFT JOIN
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
 
--- Função: filtrar_curriculos
-CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
+-- Removendo a função existente, caso já tenha sido criada
+DROP FUNCTION IF EXISTS public.filtrar_curriculos(
+    TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT, INTEGER, INTEGER, INTEGER, INTEGER,
+    TEXT, TEXT, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER
+);
+
+-- Criando a função novamente
+CREATE FUNCTION public.filtrar_curriculos(
     p_nome TEXT DEFAULT NULL,
     p_cidade TEXT DEFAULT NULL,
     p_escolaridade TEXT DEFAULT NULL,
-    p_funcao TEXT DEFAULT NULL,  -- Alterado para usar a função
+    p_funcao TEXT DEFAULT NULL,
     p_tem_ctps BOOLEAN DEFAULT NULL,
     p_servico TEXT DEFAULT NULL,
     p_idade_min INTEGER DEFAULT NULL,
@@ -288,6 +294,7 @@ CREATE OR REPLACE FUNCTION public.filtrar_curriculos(
     p_offset INTEGER DEFAULT 0
 )
 RETURNS TABLE (
+    curriculo_id INTEGER,  -- Adicionado o ID do currículo
     cpf CHAR(11),
     nome TEXT,
     idade INTEGER,
@@ -298,13 +305,14 @@ RETURNS TABLE (
     tem_ctps TEXT,
     cep TEXT,
     pcd BOOLEAN,
-    funcao TEXT,  -- Usando a função de "funcoes"
+    funcao TEXT,
     anos_experiencia INTEGER,
     meses_experiencia INTEGER
 ) AS $$
 BEGIN
     RETURN QUERY
     SELECT 
+        c.id AS curriculo_id,  -- ID agora faz parte da saída
         c.cpf::CHAR(11),
         c.nome::TEXT, 
         FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT AS idade,
@@ -315,7 +323,7 @@ BEGIN
         CASE WHEN c.tem_ctps THEN 'Sim' ELSE 'Não' END::TEXT AS tem_ctps,  
         c.cep::TEXT, 
         c.pcd, 
-        f.nome::TEXT AS funcao,  -- Referenciando a função
+        f.nome::TEXT AS funcao,  
         e.anos_experiencia,
         e.meses_experiencia
     FROM 
@@ -325,12 +333,12 @@ BEGIN
     LEFT JOIN 
         cidades ci ON c.cidade_id = ci.id
     LEFT JOIN
-        funcoes f ON e.funcao_id = f.id  -- Junção para função
+        funcoes f ON e.funcao_id = f.id  -- Referência correta para função
     WHERE 
         (p_nome IS NULL OR c.nome ILIKE '%' || p_nome || '%') AND
         (p_cidade IS NULL OR ci.nome ILIKE '%' || p_cidade || '%') AND
         (p_escolaridade IS NULL OR c.escolaridade = p_escolaridade) AND
-        (p_funcao IS NULL OR f.nome ILIKE '%' || p_funcao || '%') AND  -- Filtrando por função
+        (p_funcao IS NULL OR f.nome ILIKE '%' || p_funcao || '%') AND  
         (p_tem_ctps IS NULL OR c.tem_ctps = p_tem_ctps) AND
         (p_servico IS NULL OR c.servico = p_servico) AND
         (p_idade_min IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT >= p_idade_min) AND
@@ -345,6 +353,7 @@ BEGIN
         (p_pcd IS NULL OR c.pcd = p_pcd) AND
         (p_telefone IS NULL OR TRIM(c.telefone) LIKE '%' || TRIM(p_telefone) || '%') AND 
         (p_telefone_extra IS NULL OR TRIM(c.telefone_extra) LIKE '%' || TRIM(p_telefone_extra) || '%')
+    ORDER BY c.nome
     LIMIT p_limite OFFSET p_offset;
 END;
 $$ LANGUAGE plpgsql;
