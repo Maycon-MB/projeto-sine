@@ -25,20 +25,6 @@ class MainWindow(QMainWindow):
         config = ConfiguracoesWidget.load_configurations()
         self.current_theme = config.get("theme", "light")
 
-        # Definir uma resolução padrão ou ajustar a janela de acordo com a tela disponível
-        screen_geometry = QApplication.primaryScreen().availableGeometry()
-        width, height = screen_geometry.width(), screen_geometry.height()
-
-        # Aplica a resolução ajustada à área disponível
-        self.resize(width, height)
-
-        # Define um tamanho mínimo de janela
-        self.setMinimumSize(800, 600)
-
-        # Garantir que a janela sempre será maximizada ao iniciar
-        self.showMaximized()
-
-
         # Diretório base do projeto
         self.base_dir = Path(__file__).resolve().parent
         self.icons_dir = self.base_dir / "assets" / "icons"
@@ -207,5 +193,6 @@ if __name__ == "__main__":
     if login_dialog.exec() == QDialog.Accepted:
         usuario_logado = login_dialog.usuario_logado  # Supondo que armazene o usuário logado
         window = MainWindow(db_connection, usuario_logado['id'])
-        window.show()
+        window.showMaximized()  # Isso abre a janela maximizada
         app.exec()
+

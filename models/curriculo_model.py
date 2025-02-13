@@ -337,7 +337,27 @@ class CurriculoModel:
         """
         Retorna um dicionário com a distribuição de escolaridade, aplicando filtros se necessário.
         """
-        query = "SELECT escolaridade, COUNT(id) AS total FROM curriculo"
+        # Escolaridades padrão
+        escolaridades_padrao = [
+            "ENSINO FUNDAMENTAL INCOMPLETO",
+            "ENSINO FUNDAMENTAL COMPLETO",
+            "ENSINO MÉDIO INCOMPLETO",
+            "ENSINO MÉDIO COMPLETO",
+            "ENSINO SUPERIOR INCOMPLETO",
+            "ENSINO SUPERIOR COMPLETO",
+            "PÓS-GRADUAÇÃO/MBA",
+            "MESTRADO",
+            "DOUTORADO"
+        ]
+        
+        # Inicializando o dicionário de distribuição com todas as escolaridades padrão e contagem 0
+        distribucao_escolaridade = {escolaridade: 0 for escolaridade in escolaridades_padrao}
+
+        # Consultando as escolaridades no banco
+        query = """
+        SELECT escolaridade, COUNT(id) AS total
+        FROM curriculo
+        """
         
         # Aplicar filtro de data (PostgreSQL)
         filtros = {
@@ -349,14 +369,23 @@ class CurriculoModel:
         if filtro in filtros:
             query += filtros[filtro]
         
-        query += " GROUP BY escolaridade;"
+        query += " GROUP BY escolaridade ORDER BY total DESC;"
 
         try:
             results = self.db.execute_query(query, fetch_all=True)
-            return {row['escolaridade']: row['total'] for row in results}
+            # Preenchendo as escolaridades no dicionário
+            for row in results:
+                escolaridade = row['escolaridade']
+                total = row['total']
+                if escolaridade in distribucao_escolaridade:
+                    distribucao_escolaridade[escolaridade] = total
+            
+            # Verificando o resultado
+            print(f"Distribuição de Escolaridade com valores padrão: {distribucao_escolaridade}")
+            return distribucao_escolaridade
         except Exception as e:
             print(f"Erro ao obter distribuição de escolaridade: {e}")
-            return {}
+            return distribucao_escolaridade  # Retorna o dicionário com as escolaridades padrão
 
     def get_top_funcoes(self, filtro=None, limit=5):
         """
@@ -386,21 +415,20 @@ class CurriculoModel:
             print(f"Erro ao obter top funcaos: {e}")
             return {}
 
-    def get_pcd_distribuicao(self, filtro=None):
+    def get_ctps_distribuicao(self, filtro=None):
         """
-        Retorna a distribuição entre pessoas que estão buscando o pcd e as que já possuem experiência, aplicando filtros se necessário.
+        Retorna a distribuição entre currículos com CTPS e sem CTPS, aplicando filtros se necessário.
         """
         query = """
         SELECT 
             CASE 
-                WHEN pcd THEN 'pcd'
-                ELSE 'Com Experiência'
+                WHEN tem_ctps THEN 'Com CTPS'
+                ELSE 'Sem CTPS'
             END AS categoria,
             COUNT(*) AS total
         FROM curriculo
         """
-
-        # Aplicar filtro de data (PostgreSQL)
+        
         filtros = {
             "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
             "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
@@ -416,17 +444,17 @@ class CurriculoModel:
             results = self.db.execute_query(query, fetch_all=True)
             return {row['categoria']: row['total'] for row in results}
         except Exception as e:
-            print(f"Erro ao obter distribuição de pcd: {e}")
+            print(f"Erro ao obter distribuição de CTPS: {e}")
             return {}
 
-    def get_experiencia_por_idade(self, filtro=None):
+    def get_experiencia_media_por_idade(self, filtro=None):
         """
-        Retorna um dicionário com a distribuição de experiência por idade.
+        Retorna a média de anos de experiência por faixa etária, aplicando filtros se necessário.
         """
         query = """
         SELECT
             FLOOR(DATE_PART('year', AGE(c.data_nascimento))) AS idade,
-            SUM(e.anos_experiencia) AS experiencia_total
+            AVG(e.anos_experiencia) AS experiencia_media
         FROM curriculo c
         JOIN experiencias e ON c.id = e.id_curriculo
         """
@@ -441,10 +469,45 @@ class CurriculoModel:
             query += filtros[filtro]
         
         query += " GROUP BY idade ORDER BY idade;"
-        
+
         try:
             results = self.db.execute_query(query, fetch_all=True)
-            return {row['idade']: row['experiencia_total'] for row in results}
+            return {row['idade']: row['experiencia_media'] for row in results}
         except Exception as e:
-            print(f"Erro ao obter distribuição de experiência por idade: {e}")
+            print(f"Erro ao obter experiência média por idade: {e}")
             return {}
+    
+    def get_faixa_etaria_distribuicao(self, filtro=None):
+            """
+            Retorna um dicionário com a distribuição de candidatos por faixa etária.
+            """
+            query = """
+            SELECT
+                CASE
+                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 18 AND 25 THEN '18-25'
+                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 26 AND 35 THEN '26-35'
+                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 36 AND 45 THEN '36-45'
+                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 46 AND 55 THEN '46-55'
+                    ELSE '56+' 
+                END AS faixa_etaria,
+                COUNT(*) AS total
+            FROM curriculo
+            """
+
+            filtros = {
+                "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
+                "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
+                "Último ano": " WHERE data_cadastro >= NOW() - INTERVAL '1 year'"
+            }
+            
+            if filtro in filtros:
+                query += filtros[filtro]
+            
+            query += " GROUP BY faixa_etaria ORDER BY faixa_etaria;"
+            
+            try:
+                results = self.db.execute_query(query, fetch_all=True)
+                return {row['faixa_etaria']: row['total'] for row in results}
+            except Exception as e:
+                print(f"Erro ao obter distribuição de faixa etária: {e}")
+                return {}
