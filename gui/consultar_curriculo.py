@@ -19,11 +19,6 @@ class ConsultaWidget(QWidget):
         self.curriculo_model = CurriculoModel(self.db_connection)
         self.model = CurriculoModel(self.db_connection)
 
-        # Variáveis para paginação
-        self.current_page = 0
-        self.items_per_page = 10
-        self.total_results = 0
-
         self.setWindowTitle("CONSULTAR CURRÍCULOS")
         self.setup_ui()
         self.search_curriculos()
@@ -104,10 +99,13 @@ class ConsultaWidget(QWidget):
         ])
         self.table.setShowGrid(True)
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
 
-        for col in range(1, self.table.columnCount()):
+        # Define todas as colunas para ajustar ao conteúdo
+        for col in range(self.table.columnCount()):
             header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
+
+        # Faz a coluna "NOME" ocupar o espaço extra
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # Índice 1 = Coluna "NOME"
 
         table_layout.addWidget(self.table)
         table_container.setLayout(table_layout)
@@ -123,23 +121,6 @@ class ConsultaWidget(QWidget):
         total_layout.addWidget(self.total_label, alignment=Qt.AlignCenter)
         bottom_layout.addLayout(total_layout)
 
-        pagination_layout = QHBoxLayout()
-        self.previous_button = QPushButton("<< Anterior")
-        self.previous_button.setStyleSheet(self._button_stylesheet())
-        self.previous_button.setEnabled(False)
-        self.previous_button.clicked.connect(self.previous_page)
-        pagination_layout.addWidget(self.previous_button, alignment=Qt.AlignLeft)
-
-        self.page_label = QLabel("Página 1")
-        pagination_layout.addWidget(self.page_label, alignment=Qt.AlignCenter)
-
-        self.next_button = QPushButton("Próximo >>")
-        self.next_button.setStyleSheet(self._button_stylesheet())
-        self.next_button.setEnabled(False)
-        self.next_button.clicked.connect(self.next_page)
-        pagination_layout.addWidget(self.next_button, alignment=Qt.AlignRight)
-
-        bottom_layout.addLayout(pagination_layout)
         layout.addLayout(bottom_layout)
 
         self.setLayout(layout)
@@ -335,14 +316,10 @@ class ConsultaWidget(QWidget):
 
         try:
             # Consulta o banco para obter resultados e popular a tabela
-            self.total_results = len(self.curriculo_model.fetch_curriculos(filtros, limite=None, offset=None))
-            results = self.curriculo_model.fetch_curriculos(
-                filtros,
-                limite=self.items_per_page,
-                offset=self.current_page * self.items_per_page
-            )
+            results = self.curriculo_model.fetch_curriculos(filtros)  # Buscar todos os currículos
+            self.total_results = len(results)  # Conta o total de currículos encontrados
+
             self.populate_table(results)
-            self.update_pagination_controls()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao buscar currículos: {str(e)}")
 
@@ -353,16 +330,13 @@ class ConsultaWidget(QWidget):
         self.table.setRowCount(len(results))
         for row_idx, row in enumerate(results):
             # Aplicar a máscara de CPF
-            cpf = row.get("cpf", "")
-            formatted_cpf = self.format_cpf(cpf)
+            formatted_cpf = self.format_cpf(row.get("cpf", ""))
             
             # Aplicar a máscara de telefone
-            telefone = row.get("telefone", "")
-            formatted_telefone = self.format_telefone(telefone)
+            formatted_telefone = self.format_telefone(row.get("telefone", ""))
             
             # Aplicar a máscara de telefone extra
-            telefone_extra = row.get("telefone_extra", "")
-            formatted_telefone_extra = self.format_telefone(telefone_extra)
+            formatted_telefone_extra = self.format_telefone(row.get("telefone_extra", ""))
 
             # Mapeia os dados para as colunas da tabela
             data = [
@@ -397,33 +371,12 @@ class ConsultaWidget(QWidget):
 
     def format_cpf(self, cpf):
         """Formata CPF para o padrão XXX.XXX.XXX-XX"""
-        return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+        return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}" if cpf else ""
 
     def format_telefone(self, telefone):
         """Formata o telefone para o padrão (XX) XXXXX-XXXX"""
-        return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"
+        return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}" if telefone else ""
     
-    def update_pagination_controls(self):
-        """
-        Atualiza os botões de paginação e o rótulo de página.
-        """
-        total_pages = -(-self.total_results // self.items_per_page)  # Arredondar para cima
-        self.page_label.setText(f"Página {self.current_page + 1} de {total_pages}")
-
-        self.previous_button.setEnabled(self.current_page > 0)
-        self.next_button.setEnabled(self.current_page < total_pages - 1)
-
-    def previous_page(self):
-        if self.current_page > 0:
-            self.current_page -= 1
-            self.search_curriculos()
-
-    def next_page(self):
-        total_pages = -(-self.total_results // self.items_per_page)
-        if self.current_page < total_pages - 1:
-            self.current_page += 1
-            self.search_curriculos()
-
     def open_edit_dialog(self, curriculo_id):
         """
         Abre a caixa de diálogo para editar o currículo.
