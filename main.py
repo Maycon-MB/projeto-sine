@@ -11,6 +11,7 @@ from gui.cadastrar_curriculo import CadastroWidget
 from gui.consultar_curriculo import ConsultaWidget
 from gui.login_cadastro import LoginCadastroDialog  # Tela de login/cadastro
 from gui.dashboard import DashboardWidget
+from gui.cadastrar_funcao import CadastrarFuncaoWidget
 from database.connection import DatabaseConnection
 from models.usuario_model import UsuarioModel
 from models.curriculo_model import CurriculoModel  # 🔥 Importando o CurriculoModel
@@ -29,15 +30,10 @@ class MainWindow(QMainWindow):
         self.base_dir = Path(__file__).resolve().parent
         self.icons_dir = self.base_dir / "assets" / "icons"
 
-        # Inicializar modelo de usuários
+        # Inicializar modelos
         self.db_connection = db_connection
         self.usuario_model = UsuarioModel(self.db_connection)
-
-        # Inicializar modelo de curriculo
-        self.db_connection = db_connection
-
-        self.curriculo_model = CurriculoModel(self.db_connection)  # ✅ Criando instância correta
-
+        self.curriculo_model = CurriculoModel(self.db_connection)
 
         # Configuração do widget central
         central_widget = QWidget()
@@ -61,9 +57,10 @@ class MainWindow(QMainWindow):
             "Home": "home-icon",
             "Cadastrar Currículo": "register-icon",
             "Consultar Currículos": "search-icon",
+            "Cadastrar Função": "job-icon",  # ✅ Adicionando o botão para a nova tela
             "Configurações": "settings-icon",
         }
-    
+
         for name, icon_base in self.button_info.items():
             btn = QPushButton(name)
             btn.setIcon(QIcon(self._get_icon_path(icon_base)))
@@ -93,7 +90,7 @@ class MainWindow(QMainWindow):
         body_layout.setContentsMargins(0, 0, 0, 0)
         body_layout.setSpacing(0)
 
-        # ✅ Inicializar a área de conteúdo principal
+        # Inicializar a área de conteúdo principal
         self.content_area = QStackedWidget()
 
         # Adiciona a tela de Dashboard como "Home"
@@ -101,8 +98,7 @@ class MainWindow(QMainWindow):
             self.usuario_model,
             self.curriculo_model,
             self._navigate,
-            usuario_logado['id'],  # Passa o ID do usuário logado
-            usuario_logado.get('cidade_admin')  # Cidade do admin (se aplicável)
+            usuario_id  # Passa o ID do usuário logado
         )
         self.content_area.addWidget(self.dashboard_widget)
 
@@ -113,18 +109,21 @@ class MainWindow(QMainWindow):
         self.consulta_widget = ConsultaWidget(self.db_connection)
         self.content_area.addWidget(self.consulta_widget)
 
+        # Adicionando a nova tela de Cadastrar Função
+        self.cadastrar_funcao_widget = CadastrarFuncaoWidget(self.db_connection)
+        self.content_area.addWidget(self.cadastrar_funcao_widget)
+
         # Passa a referência de MainWindow ao ConfiguracoesWidget
         self.configuracoes_widget = ConfiguracoesWidget(self)
         self.configuracoes_widget.apply_theme(self.current_theme)  # Aplica o tema na inicialização
         self.content_area.addWidget(self.configuracoes_widget)
 
-        # ✅ Adiciona a content_area ao layout
+        # Adiciona a content_area ao layout
         body_layout.addWidget(self.content_area, stretch=1)
-
 
         main_layout.addLayout(body_layout)
 
-        self._navigate("Página Inicial")
+        self._navigate("Home")
 
     def _confirm_exit(self):
         response = QMessageBox.question(
@@ -146,11 +145,13 @@ class MainWindow(QMainWindow):
             btn.setChecked(name == screen_name)
 
         if screen_name == "Home":
-            self.content_area.setCurrentWidget(self.dashboard_widget)  # ✅ Dashboard
+            self.content_area.setCurrentWidget(self.dashboard_widget)
         elif screen_name == "Cadastrar Currículo":
             self.content_area.setCurrentWidget(self.cadastro_widget)
         elif screen_name == "Consultar Currículos":
             self.content_area.setCurrentWidget(self.consulta_widget)
+        elif screen_name == "Cadastrar Função":  # ✅ Adicionada a navegação para a nova tela
+            self.content_area.setCurrentWidget(self.cadastrar_funcao_widget)
         elif screen_name == "Configurações":
             self.content_area.setCurrentWidget(self.configuracoes_widget)
 
@@ -183,8 +184,8 @@ if __name__ == "__main__":
     db_connection = DatabaseConnection(
         dbname="projeto_sine",
         user="postgres",
-        password="teste",
-        host="192.168.1.213"
+        password="admin",
+        host="localhost"
     )
     usuario_model = UsuarioModel(db_connection)
 
