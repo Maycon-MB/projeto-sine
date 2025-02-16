@@ -185,7 +185,7 @@ if __name__ == "__main__":
         dbname="projeto_sine",
         user="postgres",
         password="admin",
-        host="localhost"
+        host="192.168.1.23"
     )
     usuario_model = UsuarioModel(db_connection)
 
