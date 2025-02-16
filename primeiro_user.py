@@ -6,7 +6,7 @@ db = DatabaseConnection(
     dbname="projeto_sine",
     user="postgres",
     password="admin",  # Altere se necessário
-    host="localhost"
+    host="192.168.1.23"
 )
 
 def buscar_cidade_id(cidade_nome):
