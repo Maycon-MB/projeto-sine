@@ -42,9 +42,6 @@ class EditDialog(QDialog):
         self.vaga_encaminhada_input = QComboBox()
         self.vaga_encaminhada_input.addItems(["SIM", "NÃO"])
         self.vaga_encaminhada_input.setEditable(True)  # Torna o combo box editável
-        self.servico_input = QComboBox()
-        self.servico_input.addItems(["SINE", "MANUAL"])
-        self.servico_input.setEditable(True)  # Torna o combo box editável
         self.funcao_input = QLineEdit()
         self.anos_experiencia_input = QSpinBox()
         self.anos_experiencia_input.setRange(0, 50)
@@ -67,7 +64,6 @@ class EditDialog(QDialog):
             ("ESCOLARIDADE", self.escolaridade_input),
             ("TEM CTPS", self.tem_ctps_input),
             ("VAGA ENCAMINHADA", self.vaga_encaminhada_input),
-            ("SERVIÇO", self.servico_input),
             ("FUNÇÃO", self.funcao_input),
             ("ANOS DE EXPERIÊNCIA", self.anos_experiencia_input),
             ("MESES DE EXPERIÊNCIA", self.meses_experiencia_input),
@@ -141,7 +137,6 @@ class EditDialog(QDialog):
                 self.escolaridade_input.setCurrentText(curriculo.get("escolaridade", ""))
                 self.tem_ctps_input.setCurrentText("SIM" if curriculo.get("tem_ctps") else "NÃO")
                 self.vaga_encaminhada_input.setCurrentText("SIM" if curriculo.get("vaga_encaminhada") else "NÃO")
-                self.servico_input.setCurrentText(curriculo.get("servico", ""))
                 self.cep_input.setText(curriculo.get("cep", ""))
                 self.primeiro_emprego_input.setCurrentText("SIM" if curriculo.get("primeiro_emprego") else "NÃO")
 
@@ -169,7 +164,7 @@ class EditDialog(QDialog):
                 self.nome_input, self.cpf_input, self.sexo_input, self.data_nascimento_input,
                 self.telefone_input, self.telefone_extra_input, self.cidade_input,
                 self.escolaridade_input, self.tem_ctps_input, self.vaga_encaminhada_input,
-                self.servico_input, self.funcao_input, self.anos_experiencia_input,
+                self.funcao_input, self.anos_experiencia_input,
                 self.meses_experiencia_input, self.primeiro_emprego_input, self.cep_input
             ]
 
@@ -199,7 +194,6 @@ class EditDialog(QDialog):
         escolaridade = self.escolaridade_input.currentText()
         tem_ctps = self.tem_ctps_input.currentText() == "SIM"
         vaga_encaminhada = self.vaga_encaminhada_input.currentText() == "SIM"
-        servico = self.servico_input.currentText()
         funcao = self.funcao_input.text().strip()
         anos_experiencia = self.anos_experiencia_input.value()
         meses_experiencia = self.meses_experiencia_input.value()
@@ -226,7 +220,7 @@ class EditDialog(QDialog):
                 # Atualiza os dados do currículo
                 self.curriculo_model.update_curriculo(
                     self.curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id,
-                    telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps, servico,
+                    telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps,
                     cep, primeiro_emprego  # Novos campos
                 )
 

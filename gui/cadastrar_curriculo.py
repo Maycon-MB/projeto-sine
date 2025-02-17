@@ -92,8 +92,6 @@ class CadastroWidget(QWidget):
         self.add_experiencia_button.setStyleSheet(self._button_stylesheet())
         form_layout.addWidget(self.add_experiencia_button, 13, 0, 1, 2, Qt.AlignCenter)
 
-        self.servico_input = self.create_combo_box("SERVIÇO:", ["SINE", "MANUAL"], form_layout, 14)
-
         content_layout.addLayout(form_layout)
 
         # Botões
@@ -317,7 +315,6 @@ class CadastroWidget(QWidget):
             telefone = self.telefone_input.text().strip()
             telefone_extra = self.telefone_extra_input.text().strip()
             escolaridade = self.escolaridade_input.currentText().upper()
-            servico = self.servico_input.currentText().upper()
             pcd = self.pcd_input.isChecked()
             cep = self.cep_input.text().strip()
 
@@ -374,7 +371,6 @@ class CadastroWidget(QWidget):
                 escolaridade=escolaridade,
                 tem_ctps=any(anos > 0 or meses > 0 for _, anos, meses in experiencias),
                 experiencias=experiencias,
-                servico=servico,
                 pcd=pcd,
                 cep=cep_numerico
             )
@@ -397,7 +393,6 @@ class CadastroWidget(QWidget):
         self.telefone_input.clear()
         self.telefone_extra_input.clear()
         self.escolaridade_input.setCurrentIndex(0)
-        self.servico_input.setCurrentIndex(0)
         self.pcd_input.setChecked(False)  # Reseta o checkbox para desmarcado
         self.cep_input.clear()  # Limpa o campo de CEP
         while self.experiencias_layout.count():
@@ -430,9 +425,7 @@ class CadastroWidget(QWidget):
 
             previous_widget = meses_input  # Atualiza o último widget na cadeia
 
-        # Configurar o último campo para seguir com a ordem
-        self.setTabOrder(previous_widget, self.servico_input)
-        self.setTabOrder(self.servico_input, self.cadastrar_button)
+        self.setTabOrder(previous_widget, self.cadastrar_button)
 
     def eventFilter(self, source, event):
         if event.type() == QEvent.KeyPress and isinstance(event, QKeyEvent):

@@ -1,10 +1,8 @@
-import os, logging
 from pathlib import Path
-from PySide6.QtSvgWidgets import QSvgWidget
 from PySide6.QtWidgets import (
-    QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QPushButton, QLabel, QMessageBox, QDialog
+    QMainWindow, QApplication, QWidget, QVBoxLayout, QHBoxLayout, QStackedWidget, QPushButton, QMessageBox, QDialog
 )
-from PySide6.QtCore import Qt, QSize, QTimer
+from PySide6.QtCore import QSize
 from PySide6.QtGui import QIcon
 from gui.configuracoes import ConfiguracoesWidget
 from gui.cadastrar_curriculo import CadastroWidget
@@ -139,7 +137,6 @@ class MainWindow(QMainWindow):
             print(f"Ícone não encontrado: {icon_path}")
         return str(icon_path)
 
-
     def _navigate(self, screen_name):
         for name, btn in self.buttons.items():
             btn.setChecked(name == screen_name)
@@ -184,8 +181,8 @@ if __name__ == "__main__":
     db_connection = DatabaseConnection(
         dbname="projeto_sine",
         user="postgres",
-        password="admin",
-        host="192.168.1.23"
+        password="teste",
+        host="192.168.1.213"
     )
     usuario_model = UsuarioModel(db_connection)
 

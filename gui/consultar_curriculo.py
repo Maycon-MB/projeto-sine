@@ -135,45 +135,30 @@ class ConsultaWidget(QWidget):
     def create_filter_layout(self):
         filter_layout = QGridLayout()
 
-        # **Primeira coluna (SEXO, IDADE MÍNIMA, IDADE MÁXIMA)**
-        filter_layout.addWidget(QLabel("SEXO:"), 0, 0)
-        self.sexo_input = QComboBox()
-        self.sexo_input.setEditable(True)
-        self.sexo_input.addItems(["", "MASCULINO", "FEMININO"])
-        self.sexo_input.setFixedHeight(30)
-        filter_layout.addWidget(self.sexo_input, 0, 1)
+        # **Primeira coluna (FUNÇÃO, EXPERIÊNCIA (ANOS), EXPERIÊNCIA (MESES))**
+        filter_layout.addWidget(QLabel("FUNÇÃO:"), 0, 0)
+        self.funcao_input = QComboBox()
+        self.funcao_input.setEditable(True)
+        self.funcao_input.addItem("")  # Adiciona uma opção vazia
+        funcoes = self.curriculo_model.listar_funcao()  # Chama o método para listar as funções
+        self.funcao_input.addItems(funcoes)  # Preenche o combo box com as funções
+        self.funcao_input.setFixedHeight(30)
+        filter_layout.addWidget(self.funcao_input, 0, 1)
 
-        filter_layout.addWidget(QLabel("IDADE MÍNIMA:"), 1, 0)
-        self.idade_min_input = QSpinBox()
-        self.idade_min_input.setRange(0, 120)
-        self.idade_min_input.setSuffix(" anos")
-        self.idade_min_input.setFixedHeight(30)
-        filter_layout.addWidget(self.idade_min_input, 1, 1)
+        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS):"), 1, 0)
+        self.experiencia_anos = QSpinBox()
+        self.experiencia_anos.setRange(0, 50)
+        self.experiencia_anos.setFixedHeight(30)
+        filter_layout.addWidget(self.experiencia_anos, 1, 1)
 
-        filter_layout.addWidget(QLabel("IDADE MÁXIMA:"), 2, 0)
-        self.idade_max_input = QSpinBox()
-        self.idade_max_input.setRange(0, 120)
-        self.idade_max_input.setSuffix(" anos")
-        self.idade_max_input.setFixedHeight(30)
-        filter_layout.addWidget(self.idade_max_input, 2, 1)
+        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES):"), 2, 0)
+        self.experiencia_meses = QSpinBox()
+        self.experiencia_meses.setRange(0, 11)
+        self.experiencia_meses.setFixedHeight(30)
+        filter_layout.addWidget(self.experiencia_meses, 2, 1)
 
-        # **Segunda coluna (CEP, CIDADE, ESCOLARIDADE)**
-        filter_layout.addWidget(QLabel("CEP:"), 0, 2)
-        self.cep_input = QLineEdit()
-        self.cep_input.setPlaceholderText("Digite o CEP")
-        self.cep_input.setFixedHeight(30)
-        filter_layout.addWidget(self.cep_input, 0, 3)
-
-        filter_layout.addWidget(QLabel("CIDADE:"), 1, 2)
-        self.cidade_input = QComboBox()
-        self.cidade_input.setEditable(True)
-        self.cidade_input.addItem("")
-        cidades = self.curriculo_model.listar_cidades()
-        self.cidade_input.addItems(cidades)
-        self.cidade_input.setFixedHeight(30)
-        filter_layout.addWidget(self.cidade_input, 1, 3)
-
-        filter_layout.addWidget(QLabel("ESCOLARIDADE:"), 2, 2)
+        # **Segunda coluna (ESCOLARIDADE, PCD, CTPS)**
+        filter_layout.addWidget(QLabel("ESCOLARIDADE:"), 0, 2)
         self.escolaridade_input = QComboBox()
         self.escolaridade_input.setEditable(True)
         self.escolaridade_input.addItems([
@@ -189,61 +174,66 @@ class ConsultaWidget(QWidget):
             "DOUTORADO"
         ])
         self.escolaridade_input.setFixedHeight(30)
-        filter_layout.addWidget(self.escolaridade_input, 2, 3)
+        filter_layout.addWidget(self.escolaridade_input, 0, 3)
 
-        # **Terceira coluna (FUNÇÃO, SERVIÇO, PCD)**
-        filter_layout.addWidget(QLabel("FUNÇÃO:"), 0, 4)
-        self.funcao_input = QLineEdit()
-        self.funcao_input.setPlaceholderText("Digite a função")
-        self.funcao_input.setFixedHeight(30)
-        filter_layout.addWidget(self.funcao_input, 0, 5)
-
-        filter_layout.addWidget(QLabel("SERVIÇO:"), 1, 4)
-        self.servico_input = QComboBox()
-        self.servico_input.setEditable(True)
-        self.servico_input.addItems(["", "SINE", "MANUAL"])
-        self.servico_input.setFixedHeight(30)
-        filter_layout.addWidget(self.servico_input, 1, 5)
-
-        filter_layout.addWidget(QLabel("PCD:"), 2, 4)
+        filter_layout.addWidget(QLabel("PCD:"), 1, 2)
         self.pcd_input = QComboBox()
         self.pcd_input.setEditable(True)
         self.pcd_input.addItems(["", "Sim", "Não"])
         self.pcd_input.setFixedHeight(30)
-        filter_layout.addWidget(self.pcd_input, 2, 5)
+        filter_layout.addWidget(self.pcd_input, 1, 3)
 
-        # **Quarta coluna (EXPERIÊNCIA, CTPS)**
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÍN.):"), 0, 6)
-        self.experiencia_anos_min = QSpinBox()
-        self.experiencia_anos_min.setRange(0, 50)
-        self.experiencia_anos_min.setFixedHeight(30)
-        filter_layout.addWidget(self.experiencia_anos_min, 0, 7)
-
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (ANOS MÁX.):"), 1, 6)
-        self.experiencia_anos_max = QSpinBox()
-        self.experiencia_anos_max.setRange(0, 50)
-        self.experiencia_anos_max.setFixedHeight(30)
-        filter_layout.addWidget(self.experiencia_anos_max, 1, 7)
-
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÍN.):"), 2, 6)
-        self.experiencia_meses_min = QSpinBox()
-        self.experiencia_meses_min.setRange(0, 11)
-        self.experiencia_meses_min.setFixedHeight(30)
-        filter_layout.addWidget(self.experiencia_meses_min, 2, 7)
-
-        filter_layout.addWidget(QLabel("EXPERIÊNCIA (MESES MÁX.):"), 3, 6)
-        self.experiencia_meses_max = QSpinBox()
-        self.experiencia_meses_max.setRange(0, 11)
-        self.experiencia_meses_max.setFixedHeight(30)
-        filter_layout.addWidget(self.experiencia_meses_max, 3, 7)
-
-        filter_layout.addWidget(QLabel("CTPS:"), 4, 6)
+        filter_layout.addWidget(QLabel("CTPS:"), 2, 2)
         self.ctps_input = QComboBox()
         self.ctps_input.setEditable(True)
         self.ctps_input.addItems(["", "Sim", "Não"])
         self.ctps_input.setFixedHeight(30)
-        filter_layout.addWidget(self.ctps_input, 4, 7)
+        filter_layout.addWidget(self.ctps_input, 2, 3)
 
+        # **Terceira coluna (SEXO, IDADE MÍNIMA, IDADE MÁXIMA)**
+        filter_layout.addWidget(QLabel("SEXO:"), 0, 4)
+        self.sexo_input = QComboBox()
+        self.sexo_input.setEditable(True)
+        self.sexo_input.addItems(["", "MASCULINO", "FEMININO"])
+        self.sexo_input.setFixedHeight(30)
+        filter_layout.addWidget(self.sexo_input, 0, 5)
+
+        filter_layout.addWidget(QLabel("IDADE MÍNIMA:"), 1, 4)
+        self.idade_min_input = QSpinBox()
+        self.idade_min_input.setRange(0, 120)
+        self.idade_min_input.setSuffix(" anos")
+        self.idade_min_input.setFixedHeight(30)
+        filter_layout.addWidget(self.idade_min_input, 1, 5)
+
+        filter_layout.addWidget(QLabel("IDADE MÁXIMA:"), 2, 4)
+        self.idade_max_input = QSpinBox()
+        self.idade_max_input.setRange(0, 120)
+        self.idade_max_input.setSuffix(" anos")
+        self.idade_max_input.setFixedHeight(30)
+        filter_layout.addWidget(self.idade_max_input, 2, 5)
+
+        # **Quarta coluna (CEP, CIDADE)**
+        filter_layout.addWidget(QLabel("CEP:"), 0, 6)
+        self.cep_input = QLineEdit()
+        self.cep_input.setPlaceholderText("Digite o CEP")
+        self.cep_input.setFixedHeight(30)
+        filter_layout.addWidget(self.cep_input, 0, 7)
+
+        filter_layout.addWidget(QLabel("CIDADE:"), 1, 6)
+        self.cidade_input = QComboBox()
+        self.cidade_input.setEditable(True)
+        self.cidade_input.addItem("")
+        cidades = self.curriculo_model.listar_cidades()
+        self.cidade_input.addItems(cidades)
+        self.cidade_input.setFixedHeight(30)
+        filter_layout.addWidget(self.cidade_input, 1, 7)
+
+        # Balancear o tamanho das colunas para evitar que a última ocupe todo o espaço
+        filter_layout.setColumnStretch(1, 1)
+        filter_layout.setColumnStretch(3, 1)
+        filter_layout.setColumnStretch(5, 1)
+        filter_layout.setColumnStretch(7, 1)
+        
         return filter_layout
 
     def _button_stylesheet(self):
@@ -271,9 +261,8 @@ class ConsultaWidget(QWidget):
         """
     
     def search_curriculos(self):
-        # Calcula a experiência mínima e máxima em meses
-        experiencia_min_meses = (self.experiencia_anos_min.value() * 12) + self.experiencia_meses_min.value()
-        experiencia_max_meses = (self.experiencia_anos_max.value() * 12) + self.experiencia_meses_max.value()
+        # Calcula a experiência mínima em meses (a máxima não é usada na função SQL)
+        experiencia_meses = (self.experiencia_anos.value() * 12) + self.experiencia_meses.value()
 
         # Define os filtros com as variáveis calculadas
         filtros = {
@@ -282,7 +271,6 @@ class ConsultaWidget(QWidget):
             "idade_min": self.idade_min_input.value() or None,
             "idade_max": self.idade_max_input.value() or None,
             "escolaridade": self.escolaridade_input.currentText() or None,
-            "servico": self.servico_input.currentText() or None,
             "pcd": {
                 "Sim": True,
                 "Não": False
@@ -292,9 +280,8 @@ class ConsultaWidget(QWidget):
                 "Sim": True,
                 "Não": False
             }.get(self.ctps_input.currentText(), None),
-            "funcao": self.funcao_input.text().strip() or None,
-            "experiencia_min": experiencia_min_meses if experiencia_min_meses > 0 else None,
-            "experiencia_max": experiencia_max_meses if experiencia_max_meses > 0 else None,
+            "funcao": self.funcao_input.currentText() or None,
+            "experiencia": experiencia_meses if experiencia_meses > 0 else None,  # Ajustado!
         }
 
         try:
@@ -315,6 +302,7 @@ class ConsultaWidget(QWidget):
         Preenche a tabela com os resultados da consulta.
         """
         self.table.setRowCount(len(results))
+
         for row_idx, row in enumerate(results):
             # Aplicar a máscara de CPF
             formatted_cpf = self.format_cpf(row.get("cpf", ""))
@@ -350,9 +338,49 @@ class ConsultaWidget(QWidget):
 
             # Botão de edição na última coluna
             edit_button = QPushButton("EDITAR")
+            edit_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #026bc7;
+                    color: white;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #0056A1;
+                }
+            """)
             edit_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.open_edit_dialog(id))
             self.table.setCellWidget(row_idx, 13, edit_button)  # Última coluna é a de AÇÕES (índice 13)
-        
+
+        # Ajustar o cabeçalho para manter uma proporção equilibrada
+        header = self.table.horizontalHeader()
+        column_stretch = {
+            0: 1.5,  # CPF (garantir que caiba o texto formatado)
+            1: 2,  # Nome (maior peso)
+            2: 1,  # Idade
+            3: 2,  # Telefone
+            4: 2,  # Telefone Extra
+            5: 1,  # CEP
+            6: 2,  # Cidade
+            7: 2,  # Escolaridade
+            8: 2,  # Função
+            9: 1,  # Anos Exp.
+            10: 1,  # Meses Exp.
+            11: 1,  # CTPS
+            12: 1,  # PCD
+            13: 1   # Ações (botão de editar)
+        }
+
+        for col, stretch in column_stretch.items():
+            header.setSectionResizeMode(col, QHeaderView.Stretch)
+            header.setSectionResizeMode(col, QHeaderView.Interactive)
+            self.table.setColumnWidth(col, int(90 * stretch))  # Ajuste de largura proporcional
+
+        # Garantir que a coluna do CPF tenha um tamanho mínimo suficiente
+        self.table.setColumnWidth(0, 130)  # 130px é suficiente para CPF no formato XXX.XXX.XXX-XX
+
         # Atualiza o total de resultados exibido
         self.total_label.setText(f"TOTAL DE CURRÍCULOS: {self.total_results}")
 
@@ -405,11 +433,8 @@ class ConsultaWidget(QWidget):
         self.sexo_input.setCurrentIndex(0)
         self.cidade_input.setCurrentIndex(0)
         self.escolaridade_input.setCurrentIndex(0)
-        self.experiencia_anos_min.setValue(0)
-        self.experiencia_anos_max.setValue(0)
-        self.experiencia_meses_min.setValue(0)
-        self.experiencia_meses_max.setValue(0)
-        self.servico_input.setCurrentIndex(0)
+        self.experiencia_anos.setValue(0)
+        self.experiencia_meses.setValue(0)
         self.idade_min_input.setValue(0)
         self.idade_max_input.setValue(0)
         self.cep_input.clear()
