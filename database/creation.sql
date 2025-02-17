@@ -1,33 +1,29 @@
 -- Apagar o esquema caso exista
-DROP SCHEMA IF EXISTS public CASCADE;
+DROP SCHEMA IF EXISTS public CASCADE; 
 
 -- Criar o esquema novamente
-CREATE SCHEMA public;
+CREATE SCHEMA public;  
 
 -- Dropar tabelas e views caso existam
-DROP TABLE IF EXISTS public.logs_auditoria;
-DROP VIEW IF EXISTS public.vw_curriculos_detalhados;
-DROP TABLE IF EXISTS public.usuarios;
-DROP TABLE IF EXISTS public.servicos;
-DROP TABLE IF EXISTS public.pessoa_servicos;
-DROP TABLE IF EXISTS public.experiencias;
-DROP TABLE IF EXISTS public.curriculo;
-DROP TABLE IF EXISTS public.cidades;
-DROP TABLE IF EXISTS public.funcoes;  -- Adicionando drop para a nova tabela de funções
+DROP TABLE IF EXISTS public.logs_auditoria; 
+DROP VIEW IF EXISTS public.vw_curriculos_detalhados; 
+DROP TABLE IF EXISTS public.usuarios; 
+DROP TABLE IF EXISTS public.experiencias; 
+DROP TABLE IF EXISTS public.curriculo; 
+DROP TABLE IF EXISTS public.cidades; 
+DROP TABLE IF EXISTS public.funcoes; 
 
 -- Tabela: cidades
 CREATE TABLE public.cidades (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(255) NOT NULL UNIQUE
-)
-TABLESPACE pg_default;
+) TABLESPACE pg_default;
 
 ALTER TABLE public.cidades
     OWNER TO postgres;
 
 -- Populando a tabela cidades com nomes das cidades do RJ
-INSERT INTO public.cidades (nome)
-VALUES
+INSERT INTO public.cidades (nome) VALUES
     ('ANGRA DOS REIS'),
     ('APERIBÉ'),
     ('ARARUAMA'),
@@ -119,22 +115,19 @@ VALUES
     ('VALENÇA'),
     ('VARRE-SAI'),
     ('VASSOURAS'),
-    ('VOLTA REDONDA')
-ON CONFLICT DO NOTHING;
+    ('VOLTA REDONDA') ON CONFLICT DO NOTHING;
 
 -- Tabela: funcoes (cargos)
 CREATE TABLE public.funcoes (
     id SERIAL PRIMARY KEY,
     nome VARCHAR(255) NOT NULL UNIQUE
-)
-TABLESPACE pg_default;
+) TABLESPACE pg_default;
 
 ALTER TABLE public.funcoes
     OWNER TO postgres;
 
 -- Populando a tabela funcoes com algumas funções padrão
-INSERT INTO public.funcoes (nome)
-VALUES
+INSERT INTO public.funcoes (nome) VALUES
     ('AUXILIAR DE LIMPEZA'),
     ('AJUDANTE DE COZINHA'),
     ('ATENDENTE DE LOJA'),
@@ -149,8 +142,7 @@ VALUES
     ('ESTOQUISTA'),
     ('FISCAL DE LOJA'),
     ('FISCAL DE PREVENÇÃO DE PERDAS'),
-    ('GARÇOM')
-ON CONFLICT DO NOTHING;
+    ('GARÇOM') ON CONFLICT DO NOTHING;
 
 -- Tabela: curriculo
 CREATE TABLE public.curriculo (
@@ -161,16 +153,14 @@ CREATE TABLE public.curriculo (
     data_nascimento DATE NOT NULL,
     cidade_id INTEGER NOT NULL,
     telefone VARCHAR(11) CHECK (telefone ~ '^\d{10,11}$'),
-    telefone_extra VARCHAR(11) CHECK (telefone_extra ~ '^\d{10,11}$' OR telefone_extra = '' OR telefone_extra IS NULL), -- Aceitar strings vazias ou NULL
+    telefone_extra VARCHAR(11) CHECK (telefone_extra ~ '^\d{10,11}$' OR telefone_extra = '' OR telefone_extra IS NULL),
     escolaridade VARCHAR(255) NOT NULL,
     tem_ctps BOOLEAN DEFAULT FALSE,
-    servico VARCHAR(6) NOT NULL CHECK (servico IN ('SINE', 'MANUAL')),
-    cep CHAR(8) CHECK (cep ~ '^\d{8}$'), -- Nova coluna: CEP
-    pcd BOOLEAN DEFAULT FALSE, 
-    data_cadastro TIMESTAMP DEFAULT NOW(), -- Nova coluna: Armazena a data/hora de criação do registro
+    cep CHAR(8) CHECK (cep ~ '^\d{8}$'),
+    pcd BOOLEAN DEFAULT FALSE,
+    data_cadastro TIMESTAMP DEFAULT NOW(),
     CONSTRAINT fk_curriculo_cidade FOREIGN KEY (cidade_id) REFERENCES public.cidades (id)
-)
-TABLESPACE pg_default;
+) TABLESPACE pg_default;
 
 ALTER TABLE public.curriculo
     OWNER TO postgres;
@@ -190,36 +180,10 @@ CREATE TABLE public.experiencias (
     meses_experiencia INTEGER NOT NULL CHECK (meses_experiencia >= 0 AND meses_experiencia < 12),
     FOREIGN KEY (id_curriculo) REFERENCES public.curriculo (id) ON DELETE CASCADE,
     FOREIGN KEY (funcao_id) REFERENCES public.funcoes (id) ON DELETE CASCADE,
-    CONSTRAINT unique_id_curriculo_funcao UNIQUE (id_curriculo, funcao_id) -- Garantia de não duplicação por currículo e função
-)
-TABLESPACE pg_default;
+    CONSTRAINT unique_id_curriculo_funcao UNIQUE (id_curriculo, funcao_id)
+) TABLESPACE pg_default;
 
 ALTER TABLE public.experiencias
-    OWNER TO postgres;
-
--- Tabela: pessoa_servicos
-CREATE TABLE public.pessoa_servicos (
-    id SERIAL PRIMARY KEY,
-    pessoa_id INTEGER,
-    servico VARCHAR(255) NOT NULL,
-    FOREIGN KEY (pessoa_id) REFERENCES public.curriculo (id) ON DELETE CASCADE
-)
-TABLESPACE pg_default;
-
-ALTER TABLE public.pessoa_servicos
-    OWNER TO postgres;
-
--- Tabela: servicos
-CREATE TABLE public.servicos (
-    id SERIAL PRIMARY KEY,
-    nome VARCHAR(100) NOT NULL,
-    descricao TEXT,
-    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT servicos_nome_key UNIQUE (nome)
-)
-TABLESPACE pg_default;
-
-ALTER TABLE public.servicos
     OWNER TO postgres;
 
 -- Tabela: usuarios
@@ -228,40 +192,37 @@ CREATE TABLE public.usuarios (
     usuario VARCHAR(50) NOT NULL,
     senha VARCHAR(255) NOT NULL,
     email VARCHAR(100) NOT NULL,
-    cidade_id INTEGER NOT NULL, -- Altera para cidade_id como chave estrangeira
+    cidade_id INTEGER NOT NULL,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT usuarios_email_key UNIQUE (email),
     CONSTRAINT usuarios_usuario_key UNIQUE (usuario),
     CONSTRAINT fk_usuarios_cidade FOREIGN KEY (cidade_id) REFERENCES public.cidades (id)
-)
-TABLESPACE pg_default;
+) TABLESPACE pg_default;
 
 ALTER TABLE public.usuarios
     OWNER TO postgres;
 
 -- View: vw_curriculos_detalhados
 CREATE OR REPLACE VIEW public.vw_curriculos_detalhados AS
-SELECT 
+SELECT
     c.id AS curriculo_id,
     DATE_PART('year', AGE(c.data_nascimento)) AS idade,
     ci.nome AS cidade,
     c.escolaridade,
     c.tem_ctps,
-    c.cep, -- Adicionado o CEP
-    c.pcd, 
-    f.nome AS funcao,  -- Alterado para usar a função da tabela "funcoes"
+    c.cep,
+    c.pcd,
+    f.nome AS funcao,
     e.anos_experiencia,
     e.meses_experiencia
-FROM 
+FROM
     curriculo c
-LEFT JOIN 
-    experiencias e 
-ON 
-    c.id = e.id_curriculo
+LEFT JOIN
+    experiencias e ON c.id = e.id_curriculo
 LEFT JOIN
     cidades ci ON c.cidade_id = ci.id
 LEFT JOIN
-    funcoes f ON e.funcao_id = f.id;  -- Nova junção para a tabela de funções
+    funcoes f ON e.funcao_id = f.id;
 
 ALTER TABLE public.vw_curriculos_detalhados
     OWNER TO postgres;
@@ -279,11 +240,9 @@ CREATE FUNCTION public.filtrar_curriculos(
     p_escolaridade TEXT DEFAULT NULL,
     p_funcao TEXT DEFAULT NULL,
     p_tem_ctps BOOLEAN DEFAULT NULL,
-    p_servico TEXT DEFAULT NULL,
     p_idade_min INTEGER DEFAULT NULL,
     p_idade_max INTEGER DEFAULT NULL,
-    p_experiencia_min INTEGER DEFAULT NULL,
-    p_experiencia_max INTEGER DEFAULT NULL,
+    p_experiencia INTEGER DEFAULT NULL,
     p_sexo TEXT DEFAULT NULL,
     p_cpf TEXT DEFAULT NULL,
     p_cep TEXT DEFAULT NULL,
@@ -292,9 +251,8 @@ CREATE FUNCTION public.filtrar_curriculos(
     p_telefone_extra TEXT DEFAULT NULL,
     p_limite INTEGER DEFAULT 10,
     p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    curriculo_id INTEGER,  -- Adicionado o ID do currículo
+) RETURNS TABLE (
+    curriculo_id INTEGER,
     cpf CHAR(11),
     nome TEXT,
     idade INTEGER,
@@ -311,47 +269,43 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        c.id AS curriculo_id,  -- ID agora faz parte da saída
+    SELECT
+        c.id AS curriculo_id,
         c.cpf::CHAR(11),
-        c.nome::TEXT, 
+        c.nome::TEXT,
         FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT AS idade,
-        c.telefone::TEXT,  
-        c.telefone_extra::TEXT,  
-        ci.nome::TEXT AS cidade,  
-        c.escolaridade::TEXT,  
-        CASE WHEN c.tem_ctps THEN 'Sim' ELSE 'Não' END::TEXT AS tem_ctps,  
-        c.cep::TEXT, 
-        c.pcd, 
-        f.nome::TEXT AS funcao,  
+        c.telefone::TEXT,
+        c.telefone_extra::TEXT,
+        ci.nome::TEXT AS cidade,
+        c.escolaridade::TEXT,
+        CASE WHEN c.tem_ctps THEN 'Sim' ELSE 'Não' END::TEXT AS tem_ctps,
+        c.cep::TEXT,
+        c.pcd,
+        f.nome::TEXT AS funcao,
         e.anos_experiencia,
         e.meses_experiencia
-    FROM 
+    FROM
         curriculo c
-    LEFT JOIN 
+    LEFT JOIN
         experiencias e ON c.id = e.id_curriculo
-    LEFT JOIN 
+    LEFT JOIN
         cidades ci ON c.cidade_id = ci.id
     LEFT JOIN
-        funcoes f ON e.funcao_id = f.id  -- Referência correta para função
-    WHERE 
+        funcoes f ON e.funcao_id = f.id
+    WHERE
         (p_nome IS NULL OR c.nome ILIKE '%' || p_nome || '%') AND
         (p_cidade IS NULL OR ci.nome ILIKE '%' || p_cidade || '%') AND
         (p_escolaridade IS NULL OR c.escolaridade = p_escolaridade) AND
-        (p_funcao IS NULL OR f.nome ILIKE '%' || p_funcao || '%') AND  
+        (p_funcao IS NULL OR f.nome ILIKE '%' || p_funcao || '%') AND
         (p_tem_ctps IS NULL OR c.tem_ctps = p_tem_ctps) AND
-        (p_servico IS NULL OR c.servico = p_servico) AND
         (p_idade_min IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT >= p_idade_min) AND
         (p_idade_max IS NULL OR FLOOR(DATE_PART('year', AGE(c.data_nascimento)))::INT <= p_idade_max) AND
-        (p_experiencia_min IS NULL OR 
-         ((e.anos_experiencia * 12) + e.meses_experiencia) >= p_experiencia_min) AND
-        (p_experiencia_max IS NULL OR 
-         ((e.anos_experiencia * 12) + e.meses_experiencia) <= p_experiencia_max) AND
+        (p_experiencia IS NULL OR ((e.anos_experiencia * 12) + e.meses_experiencia) >= p_experiencia) AND
         (p_sexo IS NULL OR c.sexo = p_sexo) AND
         (p_cpf IS NULL OR c.cpf = p_cpf) AND
         (p_cep IS NULL OR c.cep = p_cep) AND
         (p_pcd IS NULL OR c.pcd = p_pcd) AND
-        (p_telefone IS NULL OR TRIM(c.telefone) LIKE '%' || TRIM(p_telefone) || '%') AND 
+        (p_telefone IS NULL OR TRIM(c.telefone) LIKE '%' || TRIM(p_telefone) || '%') AND
         (p_telefone_extra IS NULL OR TRIM(c.telefone_extra) LIKE '%' || TRIM(p_telefone_extra) || '%')
     ORDER BY c.nome
     LIMIT p_limite OFFSET p_offset;
