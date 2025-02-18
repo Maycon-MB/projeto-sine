@@ -162,138 +162,168 @@ class ConfiguracoesWidget(QWidget):
         self.current_theme = theme
         QApplication.instance().setStyleSheet("")  # Limpa estilos antigos
 
-        qss = """
-            QDialog, QMainWindow { background-color: #c2dafc; }
-            QLabel { font-size: 12px; color: #333333; }
-            QLineEdit, QComboBox {
-                background-color: #ffffff;
-                border: 1px solid #b0c4de;
-                border-radius: 10px;
-                padding: 5px;
-                font-size: 12px;
-                color: #000000;
-            }
+        # Escolher o QSS adequado
+        if theme == "light":
+            qss = """
+                QDialog, QMainWindow { background-color: #c2dafc; }
+                QWidget { background-color: #c2dafc; }
+                QLabel { font-size: 12px; color: #333333; }
+                QLineEdit, QComboBox {
+                    background-color: #ffffff;
+                    border: 1px solid #b0c4de;
+                    border-radius: 10px;
+                    padding: 5px;
+                    font-size: 12px;
+                    color: #000000;
+                }
 
-            QCheckBox {
-                font-size: 12px;
-                color: #333333; 
-            }
+                QCheckBox {
+                    font-size: 12px;
+                    color: #333333;
+                }
 
-            QSpinBox { 
-                background-color: #ffffff; 
-                color: #000000;
-                font-size: 12px;
-            }
+                QCheckBox::indicator {
+                    width: 13px;
+                    height: 13px;
+                    border: 2px solid black;  /* Cor da borda do quadrado */
+                    border-radius: 3px;  /* Arredondamento das bordas */
+                    background-color: #ffffff;  /* Cor de fundo do quadrado */
+                }
+
+                /* Quando o checkbox estiver marcado */
+                QCheckBox::indicator:checked {
+                    background-color: #0078d7;  /* Cor de fundo quando marcado */
+                    border: 2px solid #0078d7;  /* Cor da borda quando marcado */
+                }
+
+                /* Quando o checkbox estiver marcado e o mouse passar por cima */
+                QCheckBox::indicator:checked:hover {
+                    background-color: #005499;  /* Cor de fundo ao passar o mouse */
+                }
+
+                QSpinBox { 
+                    background-color: #ffffff; 
+                    color: #000000;
+                    font-size: 12px;
+                }
+
+                QLineEdit:focus, QComboBox:focus { 
+                    border: 2px solid #0078d7; 
+                }
+
+                QComboBox {
+                    background-color: #ffffff;
+                    color: #000000;
+                    border: 1px solid #b0c4de;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-size: 12px;
+                }
+
+                QComboBox QAbstractItemView {
+                    background-color: #ffffff;
+                    color: #000000;
+                    selection-background-color: #0078d7;
+                    selection-color: #ffffff;
+                    font-size: 12px;
+                }
+
+                QPushButton {
+                    background-color: #0078d7;
+                    color: #ffffff;
+                    font-size: 12px;
+                    border: none;
+                    border-radius: 5px;
+                    padding: 8px;
+                }
+
+                QPushButton:hover { background-color: #005499; }
+                QPushButton:disabled {
+                    background-color: #c0c0c0;
+                    color: #808080;
+                }
+
+                QTableWidget, QTableView {
+                    background-color: #ffffff;
+                    border: 1px solid #b0c4de;
+                    gridline-color: #b0c4de;
+                    selection-background-color: #0078d7;
+                    selection-color: #ffffff;
+                    color: #000000;
+                    font-size: 12px;
+                }
+
+                QHeaderView::section {
+                    background-color: #0078d7;
+                    color: white;
+                    padding: 5px;
+                    border: 1px solid #b0c4de;
+                    font-size: 12px;
+                }
+            """
+        else:
+            qss = """
+                QMainWindow { background-color: #121212; }
+                QWidget { background-color: #1E1E1E; color: white; font-size: 12px; }
+
+                QLabel { font-size: 12px; color: white; }
                 
-            QLineEdit:focus, QComboBox:focus { 
-                border: 2px solid #0078d7; 
-            }
+                QLineEdit, QComboBox {
+                    background-color: #333333;
+                    color: white;
+                    border: 1px solid #555555;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-size: 12px;
+                }
 
-            QComboBox {
-                background-color: #ffffff;
-                color: #000000;
-                border: 1px solid #b0c4de;
-                border-radius: 5px;
-                padding: 5px;
-                font-size: 12px;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                color: #000000;
-                selection-background-color: #0078d7;
-                selection-color: #ffffff;
-                font-size: 12px;
-            }
-            
-            QPushButton {
-                background-color: #0078d7;
-                color: #ffffff;
-                font-size: 12px;
-                border: none;
-                border-radius: 5px;
-                padding: 8px;
-            }
-            QPushButton:hover { background-color: #005499; }
-            QPushButton:disabled {
-                background-color: #c0c0c0;
-                color: #808080;
-            }
-            
-            QTableWidget, QTableView {
-                background-color: #ffffff;
-                border: 1px solid #b0c4de;
-                gridline-color: #b0c4de;
-                selection-background-color: #0078d7;
-                selection-color: #ffffff;
-                color: #000000;
-                font-size: 12px;
-            }
-            QHeaderView::section {
-                background-color: #0078d7;
-                color: white;
-                padding: 5px;
-                border: 1px solid #b0c4de;
-                font-size: 12px;
-            }
-        """ if theme == "light" else """
-            QMainWindow { background-color: #121212; }
-            QWidget { background-color: #1E1E1E; color: white; font-size: 12px; }
+                QCheckBox {
+                    font-size: 12px;
+                    color: white;
+                }
 
-            QLabel { font-size: 12px; color: white; }
-            
-            QLineEdit, QComboBox {
-                background-color: #333333;
-                color: white;
-                border: 1px solid #555555;
-                border-radius: 5px;
-                padding: 5px;
-                font-size: 12px;
-            }
+                QSpinBox { 
+                    background-color: #333333; 
+                    color: white;
+                    font-size: 12px;
+                }
 
-            QCheckBox {
-                font-size: 12px;
-                color: white; 
-            }
+                QPushButton {
+                    background-color: #0078d7;
+                    color: white;
+                    font-size: 12px;
+                    border-radius: 5px;
+                    padding: 10px;
+                }
 
-            QSpinBox { 
-                background-color: #333333; 
-                color: white;
-                font-size: 12px;
-            }
+                QPushButton:hover { background-color: #005499; }
+                QPushButton:checked { background-color: #0078d7; }
 
-            QPushButton {
-                background-color: #0078d7;
-                color: white;
-                font-size: 12px;
-                border-radius: 5px;
-                padding: 10px;
-            }
-            QPushButton:hover { background-color: #005499; }
-            QPushButton:checked { background-color: #0078d7; }
+                QComboBox QAbstractItemView {
+                    background-color: #333333;
+                    color: white;
+                    selection-background-color: #0078d7;
+                    selection-color: white;
+                    font-size: 12px;
+                }
+                
+                QTableWidget, QTableView {
+                    background-color: #1E1E1E;
+                    border: 1px solid #333333;
+                    gridline-color: #555555;
+                    selection-background-color: #0078d7;
+                    selection-color: white;
+                    font-size: 12px;
+                }
 
-            QComboBox QAbstractItemView {
-                background-color: #333333;
-                color: white;button
-                selection-background-color: #0078d7;
-                selection-color: white;
-                font-size: 12px;
-            }
-            
-            QTableWidget, QTableView {
-                background-color: #1E1E1E;
-                border: 1px solid #333333;
-                gridline-color: #555555;
-                selection-background-color: #0078d7;
-                selection-color: white;
-                font-size: 12px;
-            }
-            QHeaderView::section {
-                background-color: #044a82;
-                color: white;
-                padding: 5px;
-                border: 1px solid #555555;
-                font-size: 12px;
-            }
-        """
+                QHeaderView::section {
+                    background-color: #044a82;
+                    color: white;
+                    padding: 5px;
+                    border: 1px solid #555555;
+                    font-size: 12px;
+                }
+            """
 
+        # Aplicar o QSS ao QApplication
         QApplication.instance().setStyleSheet(qss)
