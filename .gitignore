@@ -1,0 +1,6 @@
+
+# Ignorar todos os arquivos .pkg (opcional)
+*.pkg
+
+# Ignorar todos os arquivos .exe (opcional)
+*.exe
