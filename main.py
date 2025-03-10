@@ -179,10 +179,11 @@ if __name__ == "__main__":
 
     # Inicializa a conexão com o banco
     db_connection = DatabaseConnection(
-        dbname="projeto_sine",
+        dbname="railway",
         user="postgres",
-        password="teste",
-        host="192.168.1.213"
+        password="uWPKHDpcpasSjFargPviuNZXpgBXqpxT",
+        host="shuttle.proxy.rlwy.net",
+        port='31029'
     )
     usuario_model = UsuarioModel(db_connection)
 
@@ -193,4 +194,3 @@ if __name__ == "__main__":
         window = MainWindow(db_connection, usuario_logado['id'])
         window.showMaximized()  # Isso abre a janela maximizada
         app.exec()
-

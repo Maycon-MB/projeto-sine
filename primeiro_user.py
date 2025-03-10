@@ -5,8 +5,8 @@ from database.connection import DatabaseConnection
 db = DatabaseConnection(
     dbname="projeto_sine",
     user="postgres",
-    password="teste",  # Altere se necessário
-    host="192.168.1.213"
+    password="admin",  # Altere se necessário
+    host="192.168.1.23"
 )
 
 def buscar_cidade_id(cidade_nome):

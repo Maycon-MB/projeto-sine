@@ -11,7 +11,9 @@ from reportlab.pdfgen import canvas
 from models.curriculo_model import CurriculoModel
 from gui.editar_curriculo import EditDialog
 from gui.busca_cep import consultar_cep
-
+import tempfile
+import os
+import webbrowser
 class ConsultaWidget(QWidget):
     def __init__(self, db_connection):
         super().__init__()
@@ -21,7 +23,7 @@ class ConsultaWidget(QWidget):
 
         # Variáveis para paginação
         self.current_page = 0
-        self.items_per_page = 10
+        self.items_per_page = 99999
         self.total_results = 0
 
         self.setWindowTitle("CONSULTAR CURRÍCULOS")
@@ -70,11 +72,11 @@ class ConsultaWidget(QWidget):
 
         # Tabela de resultados
         self.table = QTableWidget()
-        self.table.setColumnCount(14)
+        self.table.setColumnCount(15)
         self.table.setHorizontalHeaderLabels([ 
             "CPF", "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CEP", 
             "CIDADE", "ESCOLARIDADE", "FUNÇÃO", "ANOS EXP.", "MESES EXP.", 
-            "CTPS", "PCD", "AÇÕES" 
+            "CTPS", "PCD", "EDITAR", "DELETAR" 
         ])
         self.table.setShowGrid(True)
         header = self.table.horizontalHeader()
@@ -297,6 +299,22 @@ class ConsultaWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao buscar currículos: {str(e)}")
 
+    def delete_curriculo(self, curriculo_id):
+        """
+        Deleta um currículo pelo ID e atualiza a tabela.
+        """
+        reply = QMessageBox.question(self, 'Deletar Currículo', 
+                                    'Tem certeza que deseja deletar este currículo?', 
+                                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        
+        if reply == QMessageBox.Yes:
+            try:
+                self.curriculo_model.delete_curriculo(curriculo_id)
+                QMessageBox.information(self, "Sucesso", "Currículo deletado com sucesso!")
+                self.search_curriculos()  # Atualiza a tabela após a deleção
+            except Exception as e:
+                QMessageBox.critical(self, "Erro", f"Erro ao deletar currículo: {str(e)}")
+
     def populate_table(self, results):
         """
         Preenche a tabela com os resultados da consulta.
@@ -353,6 +371,24 @@ class ConsultaWidget(QWidget):
             """)
             edit_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.open_edit_dialog(id))
             self.table.setCellWidget(row_idx, 13, edit_button)  # Última coluna é a de AÇÕES (índice 13)
+
+            # Botão de deletar
+            delete_button = QPushButton("DELETAR")
+            delete_button.setStyleSheet("""
+                QPushButton {
+                    background-color: #dc3545;
+                    color: white;
+                    border-radius: 5px;
+                    padding: 5px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    background-color: #c82333;
+                }
+            """)
+            delete_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.delete_curriculo(id))
+            self.table.setCellWidget(row_idx, 14, delete_button)  # Adiciona o botão de deletar na coluna 14
 
         # Ajustar o cabeçalho para manter uma proporção equilibrada
         header = self.table.horizontalHeader()
@@ -454,98 +490,82 @@ class ConsultaWidget(QWidget):
                 row_data.append(item.text() if item else "")
             rows.append(row_data)
 
-        # Criação do arquivo PDF
-        pdf_filename, _ = QFileDialog.getSaveFileName(
-            self, "Salvar Relatório", "", "PDF Files (*.pdf)"
-        )
-        if not pdf_filename:
-            return
+        # Criação do arquivo PDF em um arquivo temporário
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            pdf_filename = tmp_file.name  # Nome temporário do arquivo
 
-        if not pdf_filename.endswith(".pdf"):
-            pdf_filename += ".pdf"
+            c = canvas.Canvas(pdf_filename, pagesize=letter)
+            width, height = letter
 
-        c = canvas.Canvas(pdf_filename, pagesize=letter)
-        width, height = letter
+            # Definir a posição inicial no PDF
+            y_position = height - 40
+            margin = 40  # Margem esquerda e direita
 
-        # Definir a posição inicial no PDF
-        y_position = height - 40
-        margin = 40  # Margem esquerda e direita
+            # Título
+            c.setFont("Helvetica-Bold", 14)
+            c.drawString(margin, y_position, "Relatório de Currículos Consultados")
+            y_position -= 20
 
-        # Título
-        c.setFont("Helvetica-Bold", 14)
-        c.drawString(margin, y_position, "Relatório de Currículos Consultados")
-        y_position -= 20
+            # Largura total disponível
+            usable_width = width - 2 * margin  # Largura total utilizável
+            # Definir as larguras das colunas
+            col_width = usable_width / 3
 
-        # Largura total disponível
-        usable_width = width - 2 * margin  # Largura total utilizável
-        # Definir as larguras das colunas
-        col_width = usable_width / 3
+            # Posições das colunas:
+            x_pos_col1 = margin
+            x_pos_col2 = margin + col_width
+            x_pos_col3 = width - margin
 
-        # Posições das colunas:
-        # Primeira coluna (extrema esquerda)
-        x_pos_col1 = margin
-        # Segunda coluna (centralizada)
-        x_pos_col2 = margin + col_width  # Posiciona a segunda coluna após a primeira
-        # Terceira coluna (extrema direita)
-        x_pos_col3 = width - margin  # Ajusta a posição da terceira coluna para a extrema direita
+            # Dados da tabela
+            c.setFont("Helvetica", 10)
+            line_height = 15  # Altura de uma linha de dados
+            max_y_position = 40  # Posição mínima antes de ir para nova página
 
-        # Dados da tabela
-        c.setFont("Helvetica", 10)
-        line_height = 15  # Altura de uma linha de dados
-        max_y_position = 40  # Posição mínima antes de ir para nova página
+            # Desenhando cada linha da tabela
+            for row in rows:
+                col1 = row[1]  # Nome (alinhado à esquerda)
+                col2 = row[5]  # CEP (centralizado)
+                col3 = row[3]  # Telefone (alinhado à direita)
+                col4 = row[0]  # CPF (alinhado à esquerda)
+                col5 = row[6]  # Cidade (centralizado)
+                col6 = row[4]  # Telefone Extra (alinhado à direita)
+                col7 = f"{row[2]} anos"  # Idade (alinhado à esquerda)
+                col8 = row[7]  # Escolaridade (centralizado)
+                col9 = "PCD" if row[12] == "Sim" else "Não é PCD"  # PCD (alinhado à direita)
 
-        # Desenhando cada linha da tabela
-        for row in rows:
-            col1 = row[1]  # Nome (alinhado à esquerda)
-            col2 = row[5]  # CEP (centralizado)
-            col3 = row[3]  # Telefone (alinhado à direita)
+                if y_position - line_height < max_y_position:
+                    c.showPage()  # Adiciona uma nova página
+                    c.setFont("Helvetica", 10)
+                    y_position = height - 40  # Reinicia a posição no topo da nova página
+                    c.drawString(margin, y_position, "Relatório de Currículos Consultados")
+                    y_position -= 20  # Ajusta a posição do título
 
-            col4 = row[0]  # CPF (alinhado à esquerda)
-            col5 = row[6]  # Cidade (centralizado)
-            col6 = row[4]  # Telefone Extra (alinhado à direita)
+                # Preenchendo as colunas com os dados
+                c.drawString(x_pos_col1, y_position, col1)
+                c.drawString(x_pos_col2, y_position, col2)
+                text_width = c.stringWidth(col3, "Helvetica", 10)
+                c.drawString(x_pos_col3 - text_width, y_position, col3)
 
-            col7 = f"{row[2]} anos"  # Idade (alinhado à esquerda)
-            col8 = row[7]  # Escolaridade (centralizado)
-            col9 = "PCD" if row[12] == "Sim" else "Não é PCD"  # PCD (alinhado à direita)
+                y_position -= line_height  # Ajusta a posição para a próxima linha
 
-            # Verificar se há espaço suficiente para a linha de dados
-            if y_position - line_height < max_y_position:
-                c.showPage()  # Adiciona uma nova página
-                c.setFont("Helvetica", 10)
-                y_position = height - 40  # Reinicia a posição no topo da nova página
+                c.drawString(x_pos_col1, y_position, col4)
+                c.drawString(x_pos_col2, y_position, col5)
+                text_width = c.stringWidth(col6, "Helvetica", 10)
+                c.drawString(x_pos_col3 - text_width, y_position, col6)
 
-                # Reescrever o título após criar uma nova página
-                c.drawString(margin, y_position, "Relatório de Currículos Consultados")
-                y_position -= 20  # Ajusta a posição do título
+                y_position -= line_height  # Ajusta a posição para a próxima linha
 
-            # Primeira linha (alinhada à esquerda, centralizada, e à direita)
-            c.drawString(x_pos_col1, y_position, col1)  # Nome
-            c.drawString(x_pos_col2, y_position, col2)  # CEP
-            # Ajusta a posição da terceira coluna para alinhar à direita
-            text_width = c.stringWidth(col3, "Helvetica", 10)
-            c.drawString(x_pos_col3 - text_width, y_position, col3)  # Telefone
+                c.drawString(x_pos_col1, y_position, col7)
+                c.drawString(x_pos_col2, y_position, col8)
+                text_width = c.stringWidth(col9, "Helvetica", 10)
+                c.drawString(x_pos_col3 - text_width, y_position, col9)
 
-            y_position -= line_height  # Ajusta a posição para a próxima linha
+                y_position -= line_height  # Ajusta a posição para a próxima linha
 
-            # Segunda linha
-            c.drawString(x_pos_col1, y_position, col4)  # CPF
-            c.drawString(x_pos_col2, y_position, col5)  # Cidade
-            # Ajusta a posição da terceira coluna para alinhar à direita
-            text_width = c.stringWidth(col6, "Helvetica", 10)
-            c.drawString(x_pos_col3 - text_width, y_position, col6)  # Telefone Extra
+            c.save()
 
-            y_position -= line_height  # Ajusta a posição para a próxima linha
-
-            # Terceira linha
-            c.drawString(x_pos_col1, y_position, col7)  # Idade
-            c.drawString(x_pos_col2, y_position, col8)  # Escolaridade
-            # Ajusta a posição da terceira coluna para alinhar à direita
-            text_width = c.stringWidth(col9, "Helvetica", 10)
-            c.drawString(x_pos_col3 - text_width, y_position, col9)  # PCD
-
-            y_position -= line_height  # Ajusta a posição para a próxima linha
-
-        c.save()
+            # Abrir o PDF gerado diretamente
+            webbrowser.open(f'file://{os.path.abspath(pdf_filename)}')
 
         # Notificar o usuário
-        QMessageBox.information(self, "Sucesso", "Relatório gerado com sucesso!")
+        QMessageBox.information(self, "Sucesso", "Relatório gerado com sucesso e aberto!")

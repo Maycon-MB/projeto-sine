@@ -510,3 +510,14 @@ class CurriculoModel:
             except Exception as e:
                 print(f"Erro ao obter distribuição de faixa etária: {e}")
                 return {}
+
+    def delete_curriculo(self, curriculo_id):
+        """
+        Deleta um currículo pelo ID.
+        """
+        query = "DELETE FROM curriculo WHERE id = %s;"
+        try:
+            self.db.execute_query(query, (curriculo_id,))
+        except Exception as e:
+            print(f"Erro ao deletar currículo: {e}")
+            raise
