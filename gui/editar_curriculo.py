@@ -39,18 +39,15 @@ class EditDialog(QDialog):
         self.tem_ctps_input = QComboBox()
         self.tem_ctps_input.addItems(["SIM", "NÃO"])
         self.tem_ctps_input.setEditable(True)  # Torna o combo box editável
-        self.vaga_encaminhada_input = QComboBox()
-        self.vaga_encaminhada_input.addItems(["SIM", "NÃO"])
-        self.vaga_encaminhada_input.setEditable(True)  # Torna o combo box editável
         self.funcao_input = QLineEdit()
         self.anos_experiencia_input = QSpinBox()
         self.anos_experiencia_input.setRange(0, 50)
         self.meses_experiencia_input = QSpinBox()
         self.meses_experiencia_input.setRange(0, 11)
-        self.primeiro_emprego_input = QComboBox()
-        self.primeiro_emprego_input.addItems(["SIM", "NÃO"])
-        self.primeiro_emprego_input.setEditable(True)  # Torna o combo box editável
         self.cep_input = QLineEdit()
+        self.pcd_input = QComboBox()
+        self.pcd_input.addItems(["SIM", "NÃO"])
+
 
         # Adicionando campos à interface
         fields = [
@@ -63,12 +60,11 @@ class EditDialog(QDialog):
             ("CIDADE", self.cidade_input),
             ("ESCOLARIDADE", self.escolaridade_input),
             ("TEM CTPS", self.tem_ctps_input),
-            ("VAGA ENCAMINHADA", self.vaga_encaminhada_input),
             ("FUNÇÃO", self.funcao_input),
             ("ANOS DE EXPERIÊNCIA", self.anos_experiencia_input),
             ("MESES DE EXPERIÊNCIA", self.meses_experiencia_input),
-            ("PRIMEIRO EMPREGO", self.primeiro_emprego_input),
-            ("CEP", self.cep_input)
+            ("CEP", self.cep_input),
+            ("PCD", self.pcd_input)
         ]
 
         for label, widget in fields:
@@ -136,9 +132,7 @@ class EditDialog(QDialog):
                 self.cidade_input.setCurrentText(curriculo.get("cidade", ""))
                 self.escolaridade_input.setCurrentText(curriculo.get("escolaridade", ""))
                 self.tem_ctps_input.setCurrentText("SIM" if curriculo.get("tem_ctps") else "NÃO")
-                self.vaga_encaminhada_input.setCurrentText("SIM" if curriculo.get("vaga_encaminhada") else "NÃO")
                 self.cep_input.setText(curriculo.get("cep", ""))
-                self.primeiro_emprego_input.setCurrentText("SIM" if curriculo.get("primeiro_emprego") else "NÃO")
 
                 if experiencias:
                     self.funcao_input.setText(experiencias[0].get("funcao", ""))
@@ -163,9 +157,9 @@ class EditDialog(QDialog):
             fields = [
                 self.nome_input, self.cpf_input, self.sexo_input, self.data_nascimento_input,
                 self.telefone_input, self.telefone_extra_input, self.cidade_input,
-                self.escolaridade_input, self.tem_ctps_input, self.vaga_encaminhada_input,
+                self.escolaridade_input, self.tem_ctps_input,
                 self.funcao_input, self.anos_experiencia_input,
-                self.meses_experiencia_input, self.primeiro_emprego_input, self.cep_input
+                self.meses_experiencia_input, self.cep_input, self.pcd_input
             ]
 
             # Verifica a navegação nos campos
@@ -182,7 +176,7 @@ class EditDialog(QDialog):
 
     def save_changes(self):
         """
-        Salva as alterações no banco de dados.
+        Salva as alterações no banco de dados com os novos campos.
         """
         nome = self.nome_input.text().strip()
         cpf = self.cpf_input.text().strip()
@@ -193,43 +187,38 @@ class EditDialog(QDialog):
         cidade = self.cidade_input.currentText()
         escolaridade = self.escolaridade_input.currentText()
         tem_ctps = self.tem_ctps_input.currentText() == "SIM"
-        vaga_encaminhada = self.vaga_encaminhada_input.currentText() == "SIM"
-        funcao = self.funcao_input.text().strip()
-        anos_experiencia = self.anos_experiencia_input.value()
-        meses_experiencia = self.meses_experiencia_input.value()
-
-        # Novos campos
-        primeiro_emprego = self.primeiro_emprego_input.currentText() == "SIM"  # Corrigido para QComboBox
+        pcd = self.pcd_input.currentText() == "SIM"  # Novo campo PCD
         cep = self.cep_input.text().strip()
 
-        # Verifica se os campos obrigatórios estão preenchidos
+        # Validação básica
         if not nome or not cpf or not telefone or not cidade:
-            QMessageBox.warning(self, "AVISO", "TODOS OS CAMPOS DEVEM SER PREENCHIDOS.")
+            QMessageBox.warning(self, "AVISO", "CAMPOS OBRIGATÓRIOS: NOME, CPF, TELEFONE E CIDADE.")
             return
 
-        confirmacao = QMessageBox.question(
-            self, "CONFIRMAÇÃO", "DESEJA SALVAR AS ALTERAÇÕES?",
-            QMessageBox.Yes | QMessageBox.No
-        )
+        try:
+            # Obtém ID da cidade
+            cidade_id = self.curriculo_model.obter_cidade_id(cidade)
+            if not cidade_id:
+                raise ValueError("CIDADE NÃO ENCONTRADA")
 
-        if confirmacao == QMessageBox.Yes:
-            try:
-                # Obtém o ID da cidade
-                cidade_id = self.curriculo_model.obter_cidade_id(cidade)
+            # Atualiza currículo
+            self.curriculo_model.update_curriculo(
+                self.curriculo_id, 
+                nome, 
+                cpf, 
+                sexo, 
+                data_nascimento, 
+                cidade_id,
+                telefone,
+                telefone_extra,
+                escolaridade,
+                tem_ctps,
+                cep,
+                pcd  # Novo parâmetro PCD
+            )
 
-                # Atualiza os dados do currículo
-                self.curriculo_model.update_curriculo(
-                    self.curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id,
-                    telefone, telefone_extra, escolaridade, vaga_encaminhada, tem_ctps,
-                    cep, primeiro_emprego  # Novos campos
-                )
-
-                # Atualiza as experiências (com limpeza e reinserção ou UPSERT)
-                self.curriculo_model.insert_experiencias(
-                    self.curriculo_id, [(funcao, anos_experiencia, meses_experiencia)]
-                )
-
-                QMessageBox.information(self, "SUCESSO", "CURRÍCULO ATUALIZADO COM SUCESSO!")
-                self.accept()
-            except Exception as e:
-                QMessageBox.critical(self, "ERRO", f"ERRO AO SALVAR ALTERAÇÕES: {e}")
+            QMessageBox.information(self, "SUCESSO", "CURRÍCULO ATUALIZADO!")
+            self.accept()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "ERRO", f"FALHA AO SALVAR: {str(e)}")

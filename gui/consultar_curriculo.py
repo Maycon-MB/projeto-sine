@@ -3,7 +3,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QComboBox, QSpinBox, QMessageBox, QScrollArea, QFileDialog, QSpacerItem
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QColor
 from PySide6.QtWidgets import QHeaderView
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -11,9 +11,7 @@ from reportlab.pdfgen import canvas
 from models.curriculo_model import CurriculoModel
 from gui.editar_curriculo import EditDialog
 from gui.busca_cep import consultar_cep
-import tempfile
-import os
-import webbrowser
+import os, webbrowser, re, tempfile
 class ConsultaWidget(QWidget):
     def __init__(self, db_connection):
         super().__init__()
@@ -24,6 +22,8 @@ class ConsultaWidget(QWidget):
         self.setWindowTitle("CONSULTAR CURRÍCULOS")
         self.setup_ui()
         self.search_curriculos()
+
+        self.last_highlighted_row = None  # Adicione esta linha
 
     def setup_ui(self):
         layout = QVBoxLayout()
@@ -67,6 +67,11 @@ class ConsultaWidget(QWidget):
 
         # Tabela de resultados
         self.table = QTableWidget()
+        self.table.setSelectionMode(QTableWidget.NoSelection)  # Desativa seleção padrão
+        self.table.setSelectionBehavior(QTableWidget.SelectRows)  # Adicione esta linha
+        
+        # Conectar o clique do cabeçalho vertical
+        self.table.verticalHeader().sectionClicked.connect(self.on_vertical_header_clicked)  # Adicione esta linha
         self.table.setColumnCount(15)
         self.table.setHorizontalHeaderLabels([ 
             "CPF", "NOME", "IDADE", "TELEFONE", "TELEFONE EXTRA", "CEP", 
@@ -100,6 +105,27 @@ class ConsultaWidget(QWidget):
 
         # Conectar o campo de CEP ao método que atualiza a cidade
         self.cep_input.textChanged.connect(self.atualizar_cidade_com_cep)
+
+    def on_vertical_header_clicked(self, logical_index):
+        # Remove o destaque de todas as linhas primeiro
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item:
+                    item.setBackground(Qt.transparent)
+
+        # Aplica o destaque apenas se for uma nova linha
+        if self.last_highlighted_row != logical_index:
+            for col in range(self.table.columnCount()):
+                item = self.table.item(logical_index, col)
+                if item:
+                    item.setBackground(QColor(211, 211, 211))  # Cinza claro RGB
+            self.last_highlighted_row = logical_index
+        else:
+            self.last_highlighted_row = None
+
+        # Força redesenho imediato
+        self.table.viewport().update()
 
     def atualizar_cidade_com_cep(self):
         # Pega o texto do campo de CEP
@@ -244,35 +270,56 @@ class ConsultaWidget(QWidget):
         # Calcula a experiência mínima em meses (a máxima não é usada na função SQL)
         experiencia_meses = (self.experiencia_anos.value() * 12) + self.experiencia_meses.value()
 
-        # Define os filtros com as variáveis calculadas
+        # Obtém os textos dos comboboxes - se for vazio, deve ser None
+        sexo = self.sexo_input.currentText() or None
+        cidade = self.cidade_input.currentText() or None
+        escolaridade = self.escolaridade_input.currentText() or None
+        funcao = self.funcao_input.currentText() or None
+        
+        # Para campos booleanos, verifica se há seleção
+        pcd = {"Sim": True, "Não": False}.get(self.pcd_input.currentText(), None)
+        tem_ctps = {"Sim": True, "Não": False}.get(self.ctps_input.currentText(), None)
+        
+        # Para campos numéricos, verifica se o valor é maior que zero
+        idade_min = self.idade_min_input.value() if self.idade_min_input.value() > 0 else None
+        idade_max = self.idade_max_input.value() if self.idade_max_input.value() > 0 else None
+        experiencia = experiencia_meses if experiencia_meses > 0 else None
+        
+        # Para campos de texto, verifica se não está vazio
+        cep = self.cep_input.text().strip() or None
+
+        # Define os filtros corretamente
         filtros = {
-            "sexo": self.sexo_input.currentText() or None,
-            "cidade": self.cidade_input.currentText() or None,
-            "idade_min": self.idade_min_input.value() or None,
-            "idade_max": self.idade_max_input.value() or None,
-            "escolaridade": self.escolaridade_input.currentText() or None,
-            "pcd": {
-                "Sim": True,
-                "Não": False
-            }.get(self.pcd_input.currentText(), None),
-            "cep": self.cep_input.text().strip() or None,
-            "tem_ctps": {
-                "Sim": True,
-                "Não": False
-            }.get(self.ctps_input.currentText(), None),
-            "funcao": self.funcao_input.currentText() or None,
-            "experiencia": experiencia_meses if experiencia_meses > 0 else None,
+            "sexo": sexo,
+            "cidade": cidade,
+            "idade_min": idade_min,
+            "idade_max": idade_max,
+            "escolaridade": escolaridade,
+            "pcd": pcd,
+            "cep": cep,
+            "tem_ctps": tem_ctps,
+            "funcao": funcao,
+            "experiencia": experiencia,
+            # Adicione os parâmetros que podem estar faltando
+            "nome": None,  # Você pode adicionar um campo de nome se necessário
+            "cpf": None,   # Você pode adicionar um campo de CPF se necessário
+            "telefone": None,
+            "telefone_extra": None
         }
 
         try:
             # Consulta o banco para obter resultados
-            results = self.curriculo_model.fetch_curriculos(filtros, limite=None, offset=None)
+            results = self.curriculo_model.fetch_curriculos(filtros) or []  # Garante que results seja uma lista
+            print(f"DEBUG - Total de registros retornados do banco: {len(results) if results else 0}")
             
-            # Remove completamente qualquer lógica de agrupamento/unique
-            self.total_results = len(results)
-            self.populate_table(results)
+            # Garante que results seja uma lista, mesmo se None
+            self.total_results = len(results) if results else 0
+            self.populate_table(results or [])  # Passa lista vazia se results for None
+            
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao buscar currículos: {str(e)}")
+            self.total_results = 0
+            self.populate_table([])  # Limpa a tabela em caso de erro
 
     def delete_curriculo(self, curriculo_id):
         """
@@ -295,6 +342,14 @@ class ConsultaWidget(QWidget):
         Preenche a tabela com os resultados da consulta.
         """
         self.table.setRowCount(len(results))
+        self.last_highlighted_row = None  # Adicione esta linha para resetar o destaque
+
+        # Resetar todas as cores
+        for row in range(self.table.rowCount()):
+            for col in range(self.table.columnCount()):
+                item = self.table.item(row, col)
+                if item:
+                    item.setBackground(Qt.transparent)
 
         for row_idx, row in enumerate(results):
             # Aplicar a máscara de CPF
@@ -308,19 +363,19 @@ class ConsultaWidget(QWidget):
 
             # Mapeia os dados para as colunas da tabela
             data = [
-                formatted_cpf,
+                self.format_cpf(row.get("cpf", "")),
                 row.get("nome", ""),
                 row.get("idade", ""),
-                formatted_telefone,
-                formatted_telefone_extra,
+                self.format_telefone(row.get("telefone", "")),
+                self.format_telefone(row.get("telefone_extra", "")),
                 row.get("cep", ""),
                 row.get("cidade", ""),
                 row.get("escolaridade", ""),
                 row.get("funcao", ""),
-                row.get("anos_experiencia", ""),
-                row.get("meses_experiencia", ""),
-                "Sim" if row.get("tem_ctps") else "Não",
-                "Sim" if row.get("pcd") else "Não"
+                row.get("anos_experiencia", 0),  # Assume 0 se ausente
+                row.get("meses_experiencia", 0),
+                "Sim" if row.get("tem_ctps", False) else "Não",
+                "Sim" if row.get("pcd", False) else "Não"
             ]
             
             # Preenche os dados nas células da tabela
@@ -344,7 +399,7 @@ class ConsultaWidget(QWidget):
                     background-color: #0056A1;
                 }
             """)
-            edit_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.open_edit_dialog(id))
+            edit_button.clicked.connect(lambda _, id=row.get("curriculo_id"): self.open_edit_dialog(id))
             self.table.setCellWidget(row_idx, 13, edit_button)  # Última coluna é a de AÇÕES (índice 13)
 
             # Botão de deletar
@@ -362,7 +417,7 @@ class ConsultaWidget(QWidget):
                     background-color: #c82333;
                 }
             """)
-            delete_button.clicked.connect(lambda _, id=row["curriculo_id"]: self.delete_curriculo(id))
+            delete_button.clicked.connect(lambda _, id=row.get("curriculo_id"): self.delete_curriculo(id))
             self.table.setCellWidget(row_idx, 14, delete_button)  # Adiciona o botão de deletar na coluna 14
 
         # Ajustar o cabeçalho para manter uma proporção equilibrada
@@ -396,12 +451,22 @@ class ConsultaWidget(QWidget):
         self.total_label.setText(f"TOTAL DE CURRÍCULOS: {self.total_results}")
 
     def format_cpf(self, cpf):
-        """Formata CPF para o padrão XXX.XXX.XXX-XX"""
-        return f"{cpf[:3]}.{cpf[3:6]}.{cpf[6:9]}-{cpf[9:]}"
+        """Formata CPF mesmo se vazio ou incompleto."""
+        cpf_limpo = re.sub(r"\D", "", str(cpf))  # Converte para string e remove não-dígitos
+        if len(cpf_limpo) == 11:
+            return f"{cpf_limpo[:3]}.{cpf_limpo[3:6]}.{cpf_limpo[6:9]}-{cpf_limpo[9:]}"
+        else:
+            return cpf_limpo  # Retorna o valor original se inválido
 
     def format_telefone(self, telefone):
-        """Formata o telefone para o padrão (XX) XXXXX-XXXX"""
-        return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"        
+        """Formata telefone mesmo se vazio."""
+        telefone_limpo = re.sub(r"\D", "", str(telefone))  # Converte para string
+        if len(telefone_limpo) == 10:
+            return f"({telefone_limpo[:2]}) {telefone_limpo[2:6]}-{telefone_limpo[6:]}"
+        elif len(telefone_limpo) == 11:
+            return f"({telefone_limpo[:2]}) {telefone_limpo[2:7]}-{telefone_limpo[7:]}"
+        else:
+            return telefone_limpo  # Retorna o valor original se inválido  
 
     def open_edit_dialog(self, curriculo_id):
         """

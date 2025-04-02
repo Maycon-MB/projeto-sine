@@ -6,6 +6,7 @@ from PySide6.QtCore import QSize, Qt, QThread, Signal
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 
 class ChartLoaderThread(QThread):
     charts_ready = Signal(list)
@@ -82,57 +83,63 @@ class DashboardWidget(QWidget):
         self.update_chart(self.charts_data[0][0], self.charts_data[0][1])
 
     def create_chart(self, title, data, chart_type):
-        fig, ax = plt.subplots(figsize=(12, 8))
-        labels, values = zip(*data.items()) if data else ([], [])
+        fig, ax = plt.subplots(figsize=(12, 6))
+        sns.set_theme(style="whitegrid")  # Estilo moderno do Seaborn
         
-        # Garantir que os valores sejam inteiros
-        values = [int(v) for v in values]
+        if not data:
+            ax.text(0.5, 0.5, 'Sem dados disponíveis', ha='center', va='center')
+            return FigureCanvas(fig)
         
-        # Definindo uma paleta de cores mais harmônica
-        colors = plt.cm.Paired.colors[:len(labels)]  # Usando uma paleta diferente
-        bar_width = max(0.2, 0.6 - 0.02 * len(labels))
+        # Ordenar dados para alguns tipos de gráfico
+        if chart_type in ["bar", "barh", "sorted_bar"]:
+            items = sorted(data.items(), key=lambda x: x[1], reverse=True)
+            labels, values = zip(*items)
+        else:
+            labels, values = zip(*data.items())
 
+        colors = plt.cm.tab20.colors  # Paleta mais profissional
+        edgecolor = '#333333'
+        
+        # Configurações comuns
+        ax.grid(axis='y', linestyle='--', alpha=0.7)
+        ax.set_facecolor('#f5f5f5')
+        fig.patch.set_facecolor('#ffffff')
+        
         if chart_type == "bar":
-            ax.bar(labels, values, color=colors, width=bar_width)
-            ax.set_xticks(range(len(labels)))
-            ax.set_xticklabels(labels, rotation=30, ha='right', fontsize=10)
-            ax.grid(axis='y', linestyle='--', alpha=0.7)
+            bars = ax.bar(labels, values, color=colors, edgecolor=edgecolor)
+            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.bar_label(bars, padding=3, fmt='%d')  # Mostrar valores nas barras
+            
         elif chart_type == "barh":
-            # Limitar o número de categorias para não ocupar toda a tela
-            max_labels = 10  # Limite para exibir no gráfico
-            if len(labels) > max_labels:
-                labels = labels[:max_labels]
-                values = values[:max_labels]
-
-            ax.barh(labels, values, color=colors, height=bar_width)
-            ax.invert_yaxis()
-            ax.grid(axis='x', linestyle='--', alpha=0.7)
+            ax.barh(labels, values, color=colors, edgecolor=edgecolor)
+            ax.invert_yaxis()  # Maior valor no topo
+            ax.set_xlabel('Quantidade de Candidatos')
+            
         elif chart_type == "sorted_bar":
-            sorted_items = sorted(zip(labels, values), key=lambda x: x[1], reverse=True)
-            sorted_labels, sorted_values = zip(*sorted_items)
-            ax.bar(sorted_labels, sorted_values, color=colors, width=bar_width)
-            ax.set_xticks(range(len(sorted_labels)))
-            ax.set_xticklabels(sorted_labels, rotation=30, ha='right', fontsize=10)
-            ax.grid(axis='y', linestyle='--', alpha=0.7)
+            bars = ax.bar(labels, values, color=colors, edgecolor=edgecolor)
+            ax.set_xticklabels(labels, rotation=45, ha='right')
+            ax.bar_label(bars, padding=3, fmt='%d')
+            
         elif chart_type == "pie":
-            ax.pie(values, labels=labels, autopct='%1.1f%%', startangle=140, colors=colors)
-            ax.axis('equal')
+            wedges, texts, autotexts = ax.pie(
+                values, 
+                labels=labels, 
+                autopct='%1.1f%%',
+                startangle=90,
+                colors=colors,
+                wedgeprops={'edgecolor': edgecolor}
+            )
+            plt.setp(autotexts, size=10, weight="bold")  # % em negrito
+            
         elif chart_type == "experience_age":
-            ax.plot(labels, values, marker='o', linestyle='-', color='b')
-            ax.set_xticks(labels)
-            ax.set_xlabel("Idade")
-            ax.set_ylabel("Média de Experiência (anos)")
-            ax.grid(True, linestyle='--', alpha=0.7)
+            ax.scatter(labels, values, color='dodgerblue', s=100, edgecolor=edgecolor)
+            ax.plot(labels, values, color='dodgerblue', linestyle='--', alpha=0.5)
+            ax.set_xlabel('Idade')
+            ax.set_ylabel('Experiência Média (anos)')
+            ax.set_xticks(range(min(labels), max(labels)+1))  # Todos os inteiros
 
-        # Garantir que os eixos y mostrem apenas números inteiros
-        ax.yaxis.set_major_locator(plt.MaxNLocator(integer=True))
-
-        # Caso de experiência vs idade, garantimos que o eixo X também seja inteiro
-        if chart_type == "experience_age":
-            ax.xaxis.set_major_locator(plt.MaxNLocator(integer=True))
-
-        ax.set_title(title)
-        fig.tight_layout()
+        ax.set_title(title, pad=20, fontsize=14, fontweight='bold')
+        plt.tight_layout()
         return FigureCanvas(fig)
 
     def update_chart(self, title, chart_type):

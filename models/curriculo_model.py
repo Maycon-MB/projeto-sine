@@ -112,12 +112,24 @@ class CurriculoModel:
             print(f"Erro ao verificar duplicidade de CPF: {e}")
             return False
 
-    def fetch_curriculos(self, filtros, limite=10, offset=0):
-        """
-        Busca currículos aplicando filtros dinâmicos, ordenação por nome e paginação.
-        """
+    def fetch_curriculos(self, filtros):
         query = """
-            SELECT * FROM public.filtrar_curriculos(
+            SELECT 
+                curriculo_id,
+                cpf,
+                nome,
+                idade,
+                COALESCE(telefone, '') AS telefone,       -- Converte NULL para ''
+                COALESCE(telefone_extra, '') AS telefone_extra,
+                cidade,
+                escolaridade,
+                tem_ctps,
+                COALESCE(cep, '') AS cep,                 -- Converte NULL para ''
+                pcd,
+                funcao,
+                anos_experiencia,
+                meses_experiencia
+            FROM public.filtrar_curriculos(
                 %(nome)s::TEXT, 
                 %(cidade)s::TEXT, 
                 %(escolaridade)s::TEXT, 
@@ -125,19 +137,16 @@ class CurriculoModel:
                 %(tem_ctps)s::BOOLEAN, 
                 %(idade_min)s::INTEGER, 
                 %(idade_max)s::INTEGER, 
-                %(experiencia)s::INTEGER,  -- Agora está correto!
+                %(experiencia)s::INTEGER,
                 %(sexo)s::TEXT, 
                 %(cpf)s::TEXT, 
                 %(cep)s::TEXT, 
                 %(pcd)s::BOOLEAN, 
                 %(telefone)s::TEXT, 
-                %(telefone_extra)s::TEXT, 
-                %(limite)s::INTEGER, 
-                %(offset)s::INTEGER
+                %(telefone_extra)s::TEXT
             )
             ORDER BY nome ASC;
-        """
-        
+        """        
         # Parâmetros de filtro
         params = {
             "nome": filtros.get("nome"),
@@ -153,14 +162,11 @@ class CurriculoModel:
             "cep": filtros.get("cep"),
             "pcd": filtros.get("pcd"),
             "telefone": filtros.get("telefone", ""),
-            "telefone_extra": filtros.get("telefone_extra", ""),
-            "limite": limite,
-            "offset": offset,
+            "telefone_extra": filtros.get("telefone_extra", "")
         }
         
         # Executa a consulta
         return self.db.execute_query(query, params, fetch_all=True)
-
 
     def get_curriculo_by_id(self, curriculo_id):
         """
@@ -184,35 +190,51 @@ class CurriculoModel:
 
     def update_curriculo(self, curriculo_id, nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, cep, pcd):
         """
-        Atualiza os dados de um currículo.
+        Atualiza os dados de um currículo com o novo campo PCD.
         """
+        # Validações e limpeza de dados
         cpf = self.limpar_formatacao_cpf(cpf)
         telefone = self.limpar_formatacao_telefone(telefone)
         telefone_extra = self.limpar_formatacao_telefone(telefone_extra) if telefone_extra else None
-
+        
         if not self.validar_cpf(cpf):
-            raise ValueError("CPF inválido. Deve conter 11 dígitos numéricos.")
-        if not self.validar_telefone(telefone):
-            raise ValueError("Telefone inválido. Deve conter 10 ou 11 dígitos.")
+            raise ValueError("CPF inválido. 11 dígitos requeridos.")
+        
         if cep:
-            cep = re.sub(r"\D", "", cep)  # Remove caracteres não numéricos
+            cep = re.sub(r"\D", "", cep)
             if len(cep) != 8:
-                raise ValueError("CEP inválido. Deve conter exatamente 8 dígitos numéricos.")
+                raise ValueError("CEP deve conter 8 dígitos.")
 
+        # Query atualizada com campo PCD
         query = """
         UPDATE curriculo
-        SET nome = %s, cpf = %s, sexo = %s, data_nascimento = %s, cidade_id = %s,
-            telefone = %s, telefone_extra = %s, escolaridade = %s,
-            tem_ctps = %s, cep = %s, pcd = %s
+        SET 
+            nome = %s,
+            cpf = %s,
+            sexo = %s,
+            data_nascimento = %s,
+            cidade_id = %s,
+            telefone = %s,
+            telefone_extra = %s,
+            escolaridade = %s,
+            tem_ctps = %s,
+            cep = %s,
+            pcd = %s  -- Novo campo
         WHERE id = %s;
         """
+        
         try:
             self.db.execute_query(
                 query,
-                (nome, cpf, sexo, data_nascimento, cidade_id, telefone, telefone_extra, escolaridade, tem_ctps, cep, pcd, curriculo_id)
+                (
+                    nome, cpf, sexo, data_nascimento, cidade_id,
+                    telefone, telefone_extra, escolaridade,
+                    tem_ctps, cep, pcd,  # Novo valor PCD
+                    curriculo_id
+                )
             )
         except Exception as e:
-            print(f"Erro ao atualizar currículo: {e}")
+            print(f"Erro SQL: {e}")
             raise
 
     def obter_cidade_id(self, cidade_nome):
@@ -388,30 +410,31 @@ class CurriculoModel:
 
     def get_top_funcoes(self, filtro=None, limit=5):
         """
-        Retorna os funcaos mais populares com base na contagem de currículos, aplicando filtros se necessário.
+        Retorna as funções mais populares com base na contagem de currículos.
         """
         query = """
-        SELECT experiencias.funcao_id, COUNT(experiencias.id_curriculo) AS total  -- Corrigido para 'funcao_id'
-        FROM experiencias
+        SELECT f.nome AS funcao, COUNT(e.id_curriculo) AS total
+        FROM experiencias e
+        JOIN funcoes f ON e.funcao_id = f.id
         """
-        
-        # Aplicar filtro de data baseado na tabela de currículos (PostgreSQL)
+
+        # Aplicar filtro de data
         filtros = {
-            "Últimos 30 dias": " JOIN curriculo c ON experiencias.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '30 days'",
-            "Últimos 6 meses": " JOIN curriculo c ON experiencias.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '6 months'",
-            "Último ano": " JOIN curriculo c ON experiencias.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '1 year'"
+            "Últimos 30 dias": " JOIN curriculo c ON e.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " JOIN curriculo c ON e.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " JOIN curriculo c ON e.id_curriculo = c.id WHERE c.data_cadastro >= NOW() - INTERVAL '1 year'"
         }
         
         if filtro in filtros:
             query += filtros[filtro]
         
-        query += " GROUP BY experiencias.funcao_id ORDER BY total DESC LIMIT %s;"  # Corrigido para 'funcao_id'
+        query += " GROUP BY f.nome ORDER BY total DESC LIMIT %s;"
 
         try:
             results = self.db.execute_query(query, (limit,), fetch_all=True)
-            return {row['funcao_id']: row['total'] for row in results}  # Alterado para usar 'funcao_id'
+            return {row['funcao']: row['total'] for row in results}
         except Exception as e:
-            print(f"Erro ao obter top funcaos: {e}")
+            print(f"Erro ao obter top funções: {e}")
             return {}
 
     def get_ctps_distribuicao(self, filtro=None):
@@ -448,16 +471,16 @@ class CurriculoModel:
 
     def get_experiencia_media_por_idade(self, filtro=None):
         """
-        Retorna a média de anos de experiência por faixa etária, aplicando filtros se necessário.
+        Retorna a média de experiência TOTAL (anos + meses) por idade.
         """
         query = """
         SELECT
-            FLOOR(DATE_PART('year', AGE(c.data_nascimento))) AS idade,
-            AVG(e.anos_experiencia) AS experiencia_media
+            FLOOR(DATE_PART('year', AGE(c.data_nascimento)) AS idade,
+            AVG(e.anos_experiencia + (e.meses_experiencia/12.0)) AS experiencia_media
         FROM curriculo c
         JOIN experiencias e ON c.id = e.id_curriculo
         """
-        
+
         filtros = {
             "Últimos 30 dias": " WHERE c.data_cadastro >= NOW() - INTERVAL '30 days'",
             "Últimos 6 meses": " WHERE c.data_cadastro >= NOW() - INTERVAL '6 months'",
@@ -471,45 +494,49 @@ class CurriculoModel:
 
         try:
             results = self.db.execute_query(query, fetch_all=True)
-            return {row['idade']: row['experiencia_media'] for row in results}
+            return {row['idade']: float(row['experiencia_media']) for row in results}
         except Exception as e:
             print(f"Erro ao obter experiência média por idade: {e}")
             return {}
     
     def get_faixa_etaria_distribuicao(self, filtro=None):
-            """
-            Retorna um dicionário com a distribuição de candidatos por faixa etária.
-            """
-            query = """
-            SELECT
-                CASE
-                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 18 AND 25 THEN '18-25'
-                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 26 AND 35 THEN '26-35'
-                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 36 AND 45 THEN '36-45'
-                    WHEN DATE_PART('year', AGE(data_nascimento)) BETWEEN 46 AND 55 THEN '46-55'
-                    ELSE '56+' 
-                END AS faixa_etaria,
-                COUNT(*) AS total
+        """
+        Retorna a distribuição de candidatos por faixa etária corrigida.
+        """
+        query = """
+        SELECT
+            CASE
+                WHEN idade BETWEEN 18 AND 24 THEN '18-24'
+                WHEN idade BETWEEN 25 AND 34 THEN '25-34'
+                WHEN idade BETWEEN 35 AND 44 THEN '35-44'
+                WHEN idade BETWEEN 45 AND 54 THEN '45-54'
+                ELSE '55+'
+            END AS faixa_etaria,
+            COUNT(*) AS total
+        FROM (
+            SELECT FLOOR(DATE_PART('year', AGE(data_nascimento)) AS idade
             FROM curriculo
-            """
+        ) AS idades
+        """
 
-            filtros = {
-                "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
-                "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
-                "Último ano": " WHERE data_cadastro >= NOW() - INTERVAL '1 year'"
-            }
-            
-            if filtro in filtros:
-                query += filtros[filtro]
-            
-            query += " GROUP BY faixa_etaria ORDER BY faixa_etaria;"
-            
-            try:
-                results = self.db.execute_query(query, fetch_all=True)
-                return {row['faixa_etaria']: row['total'] for row in results}
-            except Exception as e:
-                print(f"Erro ao obter distribuição de faixa etária: {e}")
-                return {}
+        # Aplicar filtro de data
+        filtros = {
+            "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " WHERE data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+        
+        if filtro in filtros:
+            query = query.replace("FROM curriculo", f"FROM curriculo {filtros[filtro]}")
+        
+        query += " GROUP BY faixa_etaria ORDER BY faixa_etaria;"
+        
+        try:
+            results = self.db.execute_query(query, fetch_all=True)
+            return {row['faixa_etaria']: row['total'] for row in results}
+        except Exception as e:
+            print(f"Erro ao obter distribuição de faixa etária: {e}")
+            return {}
 
     def delete_curriculo(self, curriculo_id):
         """

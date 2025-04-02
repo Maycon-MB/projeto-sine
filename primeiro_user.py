@@ -3,10 +3,11 @@ from database.connection import DatabaseConnection
 
 # Conexão com o banco de dados
 db = DatabaseConnection(
-    dbname="projeto_sine",
+    dbname="railway",
     user="postgres",
-    password="admin",  # Altere se necessário
-    host="192.168.1.23"
+    password="uWPKHDpcpasSjFargPviuNZXpgBXqpxT",
+    host="shuttle.proxy.rlwy.net",
+    port='31029'
 )
 
 def buscar_cidade_id(cidade_nome):
