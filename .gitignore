@@ -1,3 +1,2 @@
-dist/main.exe
-build/main/main.pkg
-build/MeuApp/MeuApp.pkg
+build/
+dist/

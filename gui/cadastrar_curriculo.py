@@ -1,11 +1,13 @@
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QLabel, QSizePolicy, QFormLayout, QLineEdit, QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox, QComboBox, QDateEdit, QCheckBox, QScrollArea
+    QWidget, QVBoxLayout, QLabel, QSizePolicy, QFormLayout, QLineEdit,
+    QPushButton, QHBoxLayout, QMessageBox, QGridLayout, QSpinBox,
+    QComboBox, QDateEdit, QCheckBox, QScrollArea
 )
 from PySide6.QtCore import Qt, QEvent, QDate
 from PySide6.QtGui import QKeyEvent, QIcon
 import re
 from models.curriculo_model import CurriculoModel
-from gui.busca_cep import consultar_cep  # Já importado corretamente
+from gui.busca_cep import consultar_cep
 
 class CadastroWidget(QWidget):
     def __init__(self, db_connection):
@@ -41,9 +43,16 @@ class CadastroWidget(QWidget):
         form_layout.setSpacing(10)
 
         self.cpf_input = self.create_line_edit("DIGITE O CPF (APENAS NÚMEROS)", "CPF:", form_layout, 0, mask="000.000.000-00")
+        self.cpf_status_label = QLabel("")  # Label para feedback do CPF
+        form_layout.addWidget(self.cpf_status_label, 0, 2)
+        self.cpf_input.textChanged.connect(self.verificar_cpf)  # Conecta o sinal
+
         self.nome_input = self.create_line_edit("DIGITE O NOME COMPLETO", "NOME COMPLETO:", form_layout, 1)
+
         self.sexo_input = self.create_combo_box("SEXO:", ["MASCULINO", "FEMININO"], form_layout, 2)
+
         self.data_nascimento_input = self.create_line_edit("DIGITE A DATA DE NASCIMENTO", "DATA DE NASCIMENTO:", form_layout, 3, mask="00/00/0000")
+
         self.cep_input = self.create_line_edit("DIGITE O CEP", "CEP:", form_layout, 4, mask="00000-000")
 
         try:
@@ -52,9 +61,10 @@ class CadastroWidget(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao listar cidades: {e}")
             cidades = ["SELECIONE UMA CIDADE"]
-
         self.cidade_input = self.create_combo_box("CIDADE:", cidades, form_layout, 5)
+
         self.telefone_input = self.create_line_edit("DIGITE O TELEFONE", "TELEFONE:", form_layout, 6, mask="(00) 00000-0000")
+
         self.telefone_extra_input = self.create_line_edit("DIGITE O SEGUNDO TELEFONE (OPCIONAL)", "TELEFONE EXTRA:", form_layout, 7, mask="(00) 00000-0000")
 
         self.escolaridade_input = self.create_combo_box(
@@ -136,26 +146,26 @@ class CadastroWidget(QWidget):
 
     def _button_stylesheet(self):
         return """
-            QPushButton {
-                text-align: center;
-                border-radius: 10px;  /* Bordas mais arredondadas */
-                font-size: 16px;  /* Texto menor */
-                font-weight: bold;
-                color: white;
-                border: 2px solid #026bc7;  /* Cor da borda */
-                background-color: #026bc7;
-                padding: 12px 16px;  /* Botão menor, com menos espaçamento interno */
-                outline: none;
-                width: 250px;  /* Largura fixa para os botões */
-                min-width: 120px;  /* Largura mínima do botão */
-                max-width: 200px;  /* Máxima largura para os botões, se necessário */
-            }
-            QPushButton:hover {
-                background-color: #367dba;
-            }
-            QPushButton:pressed {
-                background-color: #0056A1;
-            }
+        QPushButton {
+            text-align: center;
+            border-radius: 10px; /* Bordas mais arredondadas */
+            font-size: 16px; /* Texto menor */
+            font-weight: bold;
+            color: white;
+            border: 2px solid #026bc7; /* Cor da borda */
+            background-color: #026bc7;
+            padding: 12px 16px; /* Botão menor, com menos espaçamento interno */
+            outline: none;
+            width: 250px; /* Largura fixa para os botões */
+            min-width: 120px; /* Largura mínima do botão */
+            max-width: 200px; /* Máxima largura para os botões, se necessário */
+        }
+        QPushButton:hover {
+            background-color: #367dba;
+        }
+        QPushButton:pressed {
+            background-color: #0056A1;
+        }
         """
 
     def create_line_edit(self, placeholder, label, layout, row, mask=None):
@@ -164,90 +174,75 @@ class CadastroWidget(QWidget):
         line_edit.setStyleSheet("font-size: 1em; height: 2em; text-transform: uppercase;")
         line_edit.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         line_edit.installEventFilter(self)
-
-        # Converte automaticamente o texto para maiúsculo enquanto o usuário digita
         line_edit.textChanged.connect(lambda text: line_edit.setText(text.upper()))
-
         if mask:
             line_edit._custom_mask = mask
-
         layout.addWidget(QLabel(label.upper()), row, 0)
         layout.addWidget(line_edit, row, 1)
         return line_edit
-    
+
     def create_spin_box(self, label, layout, row):
         container = QWidget()
         container_layout = QHBoxLayout(container)
         container_layout.setContentsMargins(0, 0, 0, 0)
-
         spin_box = QSpinBox()
         spin_box.setRange(0, 120)
         spin_box.setButtonSymbols(QSpinBox.NoButtons)
         spin_box.setStyleSheet("font-size: 1em; height: 2em;")  # Ajuste de tamanho proporcional
         spin_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # Expande horizontalmente
         spin_box.installEventFilter(self)
-        
         placeholder_label = QLabel("Apenas Números")
         placeholder_label.setStyleSheet("color: gray; font-size: 0.9em; position: absolute;")
         placeholder_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-
         spin_box.valueChanged.connect(lambda: placeholder_label.setVisible(spin_box.value() == 0))
-
         container_layout.addWidget(spin_box)
         container_layout.addWidget(placeholder_label)
-
         layout.addWidget(QLabel(label), row, 0)
         layout.addWidget(container, row, 1)
         return spin_box, placeholder_label
-
 
     def create_combo_box(self, label, options, layout, row):
         combo_box = QComboBox()
         combo_box.setEditable(True)
         combo_box.setStyleSheet("font-size: 1em; height: 2em;")
-
         if callable(options):
             options = options()
-
         if isinstance(options, list) and len(options) > 0 and isinstance(options[0], tuple):
             options = [item[0] for item in options]
-
         combo_box.addItems(options)
         combo_box.installEventFilter(self)
         if combo_box.isEditable():
             combo_box.lineEdit().installEventFilter(self)
-            combo_box.lineEdit().textChanged.connect(lambda text: combo_box.lineEdit().setText(text.upper())) 
-
+            combo_box.lineEdit().textChanged.connect(lambda text: combo_box.lineEdit().setText(text.upper()))
         layout.addWidget(QLabel(label), row, 0)
         layout.addWidget(combo_box, row, 1)
         return combo_box
-    
-    def verificar_nome_existente(self):
-        """
-        Verifica em tempo real se o nome já está cadastrado no banco.
-        """
-        nome = self.nome_input.text().strip()
-        if len(nome.split()) < 2:  # Certifica-se de que o nome é completo
-            self.nome_status_label.setText("Digite o nome completo.")
-            self.nome_status_label.setStyleSheet("color: orange;")
+
+    def verificar_cpf(self):
+        cpf = self.cpf_input.text().strip()
+        cpf_numerico = re.sub(r'\D', '', cpf)
+
+        if len(cpf_numerico) != 11:
+            self.cpf_status_label.setText("CPF inválido. Deve conter 11 dígitos.")
+            self.cpf_status_label.setStyleSheet("color: red;")
             return
 
         try:
-            if self.curriculo_model.is_duplicate_nome(nome):  # Verifica duplicidade pelo nome
-                self.nome_status_label.setText("Nome já cadastrado.")
-                self.nome_status_label.setStyleSheet("color: red;")
+            if self.curriculo_model.is_duplicate(cpf_numerico):
+                self.cpf_status_label.setText("CPF já cadastrado.")
+                self.cpf_status_label.setStyleSheet("color: red;")
             else:
-                self.nome_status_label.setText("Nome disponível.")
-                self.nome_status_label.setStyleSheet("color: green;")
+                self.cpf_status_label.setText("CPF válido.")
+                self.cpf_status_label.setStyleSheet("color: green;")
         except Exception as e:
-            self.nome_status_label.setText("Erro ao verificar nome.")
-            self.nome_status_label.setStyleSheet("color: orange;")
+            self.cpf_status_label.setText(f"Erro ao verificar CPF: {e}")
+            self.cpf_status_label.setStyleSheet("color: orange;")
 
     def add_experiencia(self):
         if self.experiencia_count >= self.max_experiencias:
             QMessageBox.warning(self, "Limite de Experiências", f"Você pode adicionar no máximo {self.max_experiencias} experiências.")
             return
-        
+
         layout = QHBoxLayout()
 
         # Adiciona ComboBox para seleção de função
@@ -256,7 +251,6 @@ class CadastroWidget(QWidget):
         funcao_combo_box.setEditable(True)  # Permite a edição manual
         funcao_combo_box.setStyleSheet("font-size: 1em; height: 2em;")
         funcao_combo_box.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
         # Converte texto em maiúsculo ao digitar
         funcao_combo_box.lineEdit().textChanged.connect(lambda text: funcao_combo_box.lineEdit().setText(text.upper()))
 
@@ -345,7 +339,6 @@ class CadastroWidget(QWidget):
 
                 funcao_nome = funcao_input.currentText().upper()
                 funcao_id = self.curriculo_model.obter_funcao_id(funcao_nome)
-
                 if not funcao_id:
                     QMessageBox.warning(self, "Erro", f"Função '{funcao_nome}' não encontrada no banco de dados.")
                     return
@@ -357,9 +350,8 @@ class CadastroWidget(QWidget):
                     QMessageBox.warning(self, "Erro", f"Experiência {i + 1}: Meses deve estar entre 0 e 11.")
                     return
 
-                experiencias.append((funcao_id, anos, meses))
+                experiencias.append((funcao_id, anos, meses))  # Insere os dados no banco
 
-            # Insere os dados no banco
             self.curriculo_model.insert_curriculo(
                 nome=nome,
                 cpf=cpf_numerico,
@@ -386,6 +378,7 @@ class CadastroWidget(QWidget):
         Limpa todos os campos do formulário, retornando-os aos valores padrão.
         """
         self.cpf_input.clear()
+        self.cpf_status_label.clear()  # Limpa a mensagem de status do CPF
         self.nome_input.clear()
         self.sexo_input.setCurrentIndex(0)
         self.data_nascimento_input.clear()  # Limpa o campo de data
@@ -395,9 +388,11 @@ class CadastroWidget(QWidget):
         self.escolaridade_input.setCurrentIndex(0)
         self.pcd_input.setChecked(False)  # Reseta o checkbox para desmarcado
         self.cep_input.clear()  # Limpa o campo de CEP
+
         while self.experiencias_layout.count():
             layout = self.experiencias_layout.takeAt(0).layout()
             self.remove_experiencia(layout)
+
         self.add_experiencia()
 
     def configure_tab_order(self):

@@ -21,11 +21,6 @@ class ConsultaWidget(QWidget):
         self.curriculo_model = CurriculoModel(self.db_connection)
         self.model = CurriculoModel(self.db_connection)
 
-        # Variáveis para paginação
-        self.current_page = 0
-        self.items_per_page = 99999
-        self.total_results = 0
-
         self.setWindowTitle("CONSULTAR CURRÍCULOS")
         self.setup_ui()
         self.search_curriculos()
@@ -99,23 +94,6 @@ class ConsultaWidget(QWidget):
         total_layout.addWidget(self.total_label, alignment=Qt.AlignCenter)
         bottom_layout.addLayout(total_layout)
 
-        pagination_layout = QHBoxLayout()
-        self.previous_button = QPushButton("<< Anterior")
-        self.previous_button.setStyleSheet(self._button_stylesheet())
-        self.previous_button.setEnabled(False)
-        self.previous_button.clicked.connect(self.previous_page)
-        pagination_layout.addWidget(self.previous_button, alignment=Qt.AlignLeft)
-
-        self.page_label = QLabel("Página 1")
-        pagination_layout.addWidget(self.page_label, alignment=Qt.AlignCenter)
-
-        self.next_button = QPushButton("Próximo >>")
-        self.next_button.setStyleSheet(self._button_stylesheet())
-        self.next_button.setEnabled(False)
-        self.next_button.clicked.connect(self.next_page)
-        pagination_layout.addWidget(self.next_button, alignment=Qt.AlignRight)
-
-        bottom_layout.addLayout(pagination_layout)
         layout.addLayout(bottom_layout)
 
         self.setLayout(layout)
@@ -261,41 +239,32 @@ class ConsultaWidget(QWidget):
                 background-color: #0056A1;
             }
         """
-    
+                
     def search_curriculos(self):
-        # Calcula a experiência mínima em meses (a máxima não é usada na função SQL)
-        experiencia_meses = (self.experiencia_anos.value() * 12) + self.experiencia_meses.value()
-
-        # Define os filtros com as variáveis calculadas
-        filtros = {
-            "sexo": self.sexo_input.currentText() or None,
-            "cidade": self.cidade_input.currentText() or None,
-            "idade_min": self.idade_min_input.value() or None,
-            "idade_max": self.idade_max_input.value() or None,
-            "escolaridade": self.escolaridade_input.currentText() or None,
-            "pcd": {
-                "Sim": True,
-                "Não": False
-            }.get(self.pcd_input.currentText(), None),
-            "cep": self.cep_input.text().strip() or None,
-            "tem_ctps": {
-                "Sim": True,
-                "Não": False
-            }.get(self.ctps_input.currentText(), None),
-            "funcao": self.funcao_input.currentText() or None,
-            "experiencia": experiencia_meses if experiencia_meses > 0 else None,  # Ajustado!
-        }
-
         try:
-            # Consulta o banco para obter resultados e popular a tabela
-            self.total_results = len(self.curriculo_model.fetch_curriculos(filtros, limite=None, offset=None))
-            results = self.curriculo_model.fetch_curriculos(
-                filtros,
-                limite=self.items_per_page,
-                offset=self.current_page * self.items_per_page
-            )
+            # Consulta simples sem filtros para contar todos os registros
+            query = "SELECT COUNT(*) FROM curriculo;"
+            total = self.db.execute_query(query, fetch_one=True)['count']
+            print(f"Total de registros na tabela: {total}")  # Debug
+
+            # Consulta todos os currículos sem filtros
+            query = """
+            SELECT c.id AS curriculo_id, c.cpf, c.nome, 
+                FLOOR(DATE_PART('year', AGE(c.data_nascimento))) AS idade,
+                c.telefone, c.telefone_extra, ci.nome AS cidade,
+                c.escolaridade, c.tem_ctps, c.cep, c.pcd,
+                f.nome AS funcao, e.anos_experiencia, e.meses_experiencia
+            FROM curriculo c
+            LEFT JOIN experiencias e ON c.id = e.id_curriculo
+            LEFT JOIN cidades ci ON c.cidade_id = ci.id
+            LEFT JOIN funcoes f ON e.funcao_id = f.id
+            ORDER BY c.nome;
+            """
+            results = self.db.execute_query(query, fetch_all=True)
+            print(f"Registros retornados: {len(results)}")  # Debug
+            
+            self.total_results = len(results)
             self.populate_table(results)
-            self.update_pagination_controls()
         except Exception as e:
             QMessageBox.critical(self, "Erro", f"Erro ao buscar currículos: {str(e)}")
 
@@ -428,27 +397,6 @@ class ConsultaWidget(QWidget):
         """Formata o telefone para o padrão (XX) XXXXX-XXXX"""
         return f"({telefone[:2]}) {telefone[2:7]}-{telefone[7:]}"        
 
-    def update_pagination_controls(self):
-        """
-        Atualiza os botões de paginação e o rótulo de página.
-        """
-        total_pages = -(-self.total_results // self.items_per_page)  # Arredondar para cima
-        self.page_label.setText(f"Página {self.current_page + 1} de {total_pages}")
-
-        self.previous_button.setEnabled(self.current_page > 0)
-        self.next_button.setEnabled(self.current_page < total_pages - 1)
-
-    def previous_page(self):
-        if self.current_page > 0:
-            self.current_page -= 1
-            self.search_curriculos()
-
-    def next_page(self):
-        total_pages = -(-self.total_results // self.items_per_page)
-        if self.current_page < total_pages - 1:
-            self.current_page += 1
-            self.search_curriculos()
-
     def open_edit_dialog(self, curriculo_id):
         """
         Abre a caixa de diálogo para editar o currículo.
@@ -474,7 +422,13 @@ class ConsultaWidget(QWidget):
         self.idade_min_input.setValue(0)
         self.idade_max_input.setValue(0)
         self.cep_input.clear()
+        
+        # Limpa o combobox de função e o repovoa com as funções disponíveis
         self.funcao_input.clear()
+        funcoes = self.curriculo_model.listar_funcao()  # Obtém a lista de funções do banco de dados
+        self.funcao_input.addItem("")  # Adiciona uma opção vazia
+        self.funcao_input.addItems(funcoes)  # Repovoa o combobox com as funções
+        
         self.ctps_input.setCurrentIndex(0)
         self.pcd_input.setCurrentIndex(0)  # Limpar filtro de PCD
 
