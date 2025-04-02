@@ -239,30 +239,36 @@ class ConsultaWidget(QWidget):
                 background-color: #0056A1;
             }
         """
-                
-    def search_curriculos(self):
-        try:
-            # Consulta simples sem filtros para contar todos os registros
-            query = "SELECT COUNT(*) FROM curriculo;"
-            total = self.db.execute_query(query, fetch_one=True)['count']
-            print(f"Total de registros na tabela: {total}")  # Debug
-
-            # Consulta todos os currículos sem filtros
-            query = """
-            SELECT c.id AS curriculo_id, c.cpf, c.nome, 
-                FLOOR(DATE_PART('year', AGE(c.data_nascimento))) AS idade,
-                c.telefone, c.telefone_extra, ci.nome AS cidade,
-                c.escolaridade, c.tem_ctps, c.cep, c.pcd,
-                f.nome AS funcao, e.anos_experiencia, e.meses_experiencia
-            FROM curriculo c
-            LEFT JOIN experiencias e ON c.id = e.id_curriculo
-            LEFT JOIN cidades ci ON c.cidade_id = ci.id
-            LEFT JOIN funcoes f ON e.funcao_id = f.id
-            ORDER BY c.nome;
-            """
-            results = self.db.execute_query(query, fetch_all=True)
-            print(f"Registros retornados: {len(results)}")  # Debug
             
+    def search_curriculos(self):
+        # Calcula a experiência mínima em meses (a máxima não é usada na função SQL)
+        experiencia_meses = (self.experiencia_anos.value() * 12) + self.experiencia_meses.value()
+
+        # Define os filtros com as variáveis calculadas
+        filtros = {
+            "sexo": self.sexo_input.currentText() or None,
+            "cidade": self.cidade_input.currentText() or None,
+            "idade_min": self.idade_min_input.value() or None,
+            "idade_max": self.idade_max_input.value() or None,
+            "escolaridade": self.escolaridade_input.currentText() or None,
+            "pcd": {
+                "Sim": True,
+                "Não": False
+            }.get(self.pcd_input.currentText(), None),
+            "cep": self.cep_input.text().strip() or None,
+            "tem_ctps": {
+                "Sim": True,
+                "Não": False
+            }.get(self.ctps_input.currentText(), None),
+            "funcao": self.funcao_input.currentText() or None,
+            "experiencia": experiencia_meses if experiencia_meses > 0 else None,
+        }
+
+        try:
+            # Consulta o banco para obter resultados
+            results = self.curriculo_model.fetch_curriculos(filtros, limite=None, offset=None)
+            
+            # Remove completamente qualquer lógica de agrupamento/unique
             self.total_results = len(results)
             self.populate_table(results)
         except Exception as e:
