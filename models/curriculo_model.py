@@ -548,3 +548,26 @@ class CurriculoModel:
         except Exception as e:
             print(f"Erro ao deletar currículo: {e}")
             raise
+
+    def get_total_curriculos(self, filtro=None):
+        """
+        Retorna o total de currículos cadastrados, com opção de filtro temporal.
+        """
+        query = "SELECT COUNT(*) AS total FROM curriculo"
+        
+        # Reaproveitamento do sistema de filtros existente
+        filtros = {
+            "Últimos 30 dias": " WHERE data_cadastro >= NOW() - INTERVAL '30 days'",
+            "Últimos 6 meses": " WHERE data_cadastro >= NOW() - INTERVAL '6 months'",
+            "Último ano": " WHERE data_cadastro >= NOW() - INTERVAL '1 year'"
+        }
+        
+        if filtro in filtros:
+            query += filtros[filtro]
+        
+        try:
+            result = self.db.execute_query(query, fetch_one=True)
+            return result['total'] if result else 0
+        except Exception as e:
+            print(f"Erro ao obter total de currículos: {e}")
+            return 0        

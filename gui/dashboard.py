@@ -21,9 +21,7 @@ class ChartLoaderThread(QThread):
             ("Currículos por Cidade", self.curriculo_model.get_curriculos_por_cidade(self.filtro), "bar"),
             ("Distribuição de Escolaridade", self.curriculo_model.get_escolaridade_distribuicao(self.filtro), "barh"),
             ("Funções Mais Populares", self.curriculo_model.get_top_funcoes(self.filtro), "sorted_bar"),
-            ("Proporção de CTPS", self.curriculo_model.get_ctps_distribuicao(self.filtro), "pie"),
-            ("Idade vs Experiência", self.curriculo_model.get_experiencia_media_por_idade(self.filtro), "experience_age"),
-            ("Distribuição por Faixa Etária", self.curriculo_model.get_faixa_etaria_distribuicao(self.filtro), "bar")
+            ("Proporção de CTPS", self.curriculo_model.get_ctps_distribuicao(self.filtro), "pie")
         ]
         self.charts_ready.emit(charts_data)
 
@@ -66,9 +64,7 @@ class DashboardWidget(QWidget):
             ("Currículos por Cidade", "bar"),
             ("Distribuição de Escolaridade", "barh"),
             ("Funções Mais Populares", "sorted_bar"),
-            ("Proporção de CTPS", "pie"),
-            ("Idade vs Experiência", "experience_age"),
-            ("Distribuição por Faixa Etária", "bar")
+            ("Proporção de CTPS", "pie")
         ]
 
         for title, chart_type in self.charts_data:
@@ -107,6 +103,7 @@ class DashboardWidget(QWidget):
         
         if chart_type == "bar":
             bars = ax.bar(labels, values, color=colors, edgecolor=edgecolor)
+            ax.set_xticks(np.arange(len(labels)))  # Fixa os ticks antes de definir os labels
             ax.set_xticklabels(labels, rotation=45, ha='right')
             ax.bar_label(bars, padding=3, fmt='%d')  # Mostrar valores nas barras
             
@@ -117,6 +114,7 @@ class DashboardWidget(QWidget):
             
         elif chart_type == "sorted_bar":
             bars = ax.bar(labels, values, color=colors, edgecolor=edgecolor)
+            ax.set_xticks(np.arange(len(labels)))  # Fixa os ticks
             ax.set_xticklabels(labels, rotation=45, ha='right')
             ax.bar_label(bars, padding=3, fmt='%d')
             
@@ -149,9 +147,7 @@ class DashboardWidget(QWidget):
             "bar": self.curriculo_model.get_curriculos_por_cidade,
             "barh": self.curriculo_model.get_escolaridade_distribuicao,
             "sorted_bar": self.curriculo_model.get_top_funcoes,
-            "pie": self.curriculo_model.get_ctps_distribuicao,
-            "experience_age": self.curriculo_model.get_experiencia_media_por_idade,
-            "faixa_etaria": self.curriculo_model.get_faixa_etaria_distribuicao
+            "pie": self.curriculo_model.get_ctps_distribuicao
         }
 
         data = chart_methods[chart_type](self.current_filter)
