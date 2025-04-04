@@ -10,7 +10,7 @@ permissions:
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 15
+    timeout-minutes: 10  # Reduzido pois o build deve ser mais rápido
 
     steps:
     - name: Checkout código
@@ -20,19 +20,27 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.10'
+        cache: 'pip'  # Habilita cache para pip
 
-    - name: Gerar requirements.txt automaticamente
+    - name: Cache de dependências
+      uses: actions/cache@v3
+      id: cache
+      with:
+        path: |
+          ~\AppData\Local\pip\Cache
+          .\venv\
+        key: ${{ runner.os }}-pip-${{ hashFiles('src/*.py') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Instalar dependências
       run: |
         python -m pip install --upgrade pip
-        pip install pipreqs
-        pipreqs src/ --force --savepath requirements.txt
-        # Adiciona pyinstaller que é necessário para a build mas não é detectado
-        echo "pyinstaller" >> requirements.txt
-        # Mostra o conteúdo gerado para debug
-        type requirements.txt
-
-    - name: Instalar todas as dependências
-      run: |
+        pip install pipreqs pyinstaller  # Instala direto as dependências de build
+        if not exist requirements.txt (
+          pipreqs src/ --force --savepath requirements.txt
+          echo "pyinstaller" >> requirements.txt
+        )
         pip install -r requirements.txt
 
     - name: Obter versão
