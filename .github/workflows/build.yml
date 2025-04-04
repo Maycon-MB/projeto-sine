@@ -4,10 +4,13 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write  # ✅ Permissão para criar releases
+
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 15  # Aumente o tempo limite
+    timeout-minutes: 15
 
     steps:
     - name: Checkout código
@@ -21,7 +24,15 @@ jobs:
     - name: Instalar dependências
       run: |
         python -m pip install --upgrade pip
-        pip install PySide6==6.5.3 pyinstaller==5.13.0 psycopg2-binary==2.9.6 python-dotenv==0.21.1 requests==2.31.0
+        pip install PySide6 pyinstaller psycopg2-binary python-dotenv requests
+
+    - name: Obter versão
+      id: get_version
+      run: |
+        $version = Get-Content -Path src/version.txt -Raw
+        $version = $version.Trim()
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+      shell: pwsh
 
     - name: Gerar executável
       run: |
@@ -35,6 +46,6 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: dist/SineApp.exe
-        tag_name: v$(cat src/version.txt)
+        tag_name: v${{ steps.get_version.outputs.version }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
