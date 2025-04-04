@@ -37,13 +37,13 @@ class ConsultaWidget(QWidget):
         button_layout.setAlignment(Qt.AlignCenter)
 
         self.search_button = QPushButton("Buscar")
-        self.search_button.setIcon(QIcon("assets/icons/search-icon.svg"))
+        self.search_button.setIcon(QIcon("src/assets/icons/search-icon.svg"))
         self.search_button.setStyleSheet(self._button_stylesheet())
         self.search_button.clicked.connect(self.search_curriculos)
         button_layout.addWidget(self.search_button)
 
         self.clear_button = QPushButton("Limpar Filtros")
-        self.clear_button.setIcon(QIcon("assets/icons/clear-icon.svg"))
+        self.clear_button.setIcon(QIcon("src/assets/icons/clear-icon.svg"))
         self.clear_button.setStyleSheet(self._button_stylesheet())
         self.clear_button.clicked.connect(self.clear_filters)
         button_layout.addWidget(self.clear_button)
@@ -51,7 +51,7 @@ class ConsultaWidget(QWidget):
         button_layout.addStretch()
 
         self.generate_pdf_button = QPushButton("Gerar Relatório")
-        self.generate_pdf_button.setIcon(QIcon("assets/icons/pdf-icon.svg"))
+        self.generate_pdf_button.setIcon(QIcon("src/assets/icons/pdf-icon.svg"))
         self.generate_pdf_button.setStyleSheet(self._button_stylesheet())
         self.generate_pdf_button.clicked.connect(self.generate_pdf_report)
         button_layout.addWidget(self.generate_pdf_button)
