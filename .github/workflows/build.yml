@@ -23,10 +23,10 @@ jobs:
 
     - name: Gerar executável
       run: |
-        pyinstaller --onefile --windowed --name SineApp \
-        --add-data "src/assets/icons/*;assets/icons/" \
-        --add-data "src/config.json;." \
-        --add-data "src/version.txt;." \
+        pyinstaller --onefile --windowed --name SineApp `
+        --add-data "src/assets/icons/*;assets/icons/" `
+        --add-data "src/config.json;." `
+        --add-data "src/version.txt;." `
         src/main.py
 
     - name: Publicar no GitHub Releases
