@@ -1,6 +1,8 @@
-build/
+# PyInstaller
 dist/
 build/
-dist/
-*.pkg
-*.exe
+*.spec
+
+# Ambiente
+.env
+*.env

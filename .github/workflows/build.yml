@@ -1,0 +1,38 @@
+name: Build Executável
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout código
+      uses: actions/checkout@v3
+
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Instalar dependências
+      run: |
+        pip install PySide6 pyinstaller psycopg2-binary python-dotenv requests
+
+    - name: Gerar executável
+      run: |
+        pyinstaller --onefile --windowed --name SineApp \
+        --add-data "src/assets/icons/*;assets/icons/" \
+        --add-data "src/config.json;." \
+        --add-data "src/version.txt;." \
+        src/main.py
+
+    - name: Publicar no GitHub Releases
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/SineApp.exe
+        tag_name: v$(cat src/version.txt)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
