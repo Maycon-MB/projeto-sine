@@ -1,64 +1,72 @@
-name: Build Executável Automático
+name: Build Automático e Publicação
 
 on:
   push:
     branches: [main]
 
-permissions:
-  contents: write
-
 jobs:
   build:
     runs-on: windows-latest
-    timeout-minutes: 20  # Aumentado para builds complexas
+    timeout-minutes: 25
 
     steps:
-    - name: Checkout código
-      uses: actions/checkout@v3
+    # Etapa 1: Checkout do código
+    - name: Checkout do repositório
+      uses: actions/checkout@v4
 
+    # Etapa 2: Configurar Python 3.11 (versão estável)
     - name: Configurar Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
-    - name: Gerar requirements.txt
+    # Etapa 3: Instalar dependências críticas primeiro
+    - name: Instalar ferramentas básicas
       run: |
         python -m pip install --upgrade pip
+        pip install wheel setuptools
+
+    # Etapa 4: Gerar e corrigir requirements.txt
+    - name: Gerar requirements.txt
+      run: |
         pip install pipreqs
         pipreqs src/ --force --savepath requirements.txt --ignore *.json,*.txt,assets
-        echo "pyinstaller==6.8.0" >> requirements.txt  # Versão específica testada
+        
+        # Adições manuais
+        echo "pyinstaller==6.8.0" >> requirements.txt
         echo "bcrypt==4.1.2" >> requirements.txt
         echo "cffi==1.16.0" >> requirements.txt
         echo "pywin32==306" >> requirements.txt
+        
+        # Remover entradas problemáticas
         sed -i '/python_bcrypt/d' requirements.txt
         type requirements.txt
 
-    - name: Instalar dependências
+    # Etapa 5: Instalar todas as dependências
+    - name: Instalar pacotes do requirements.txt
       run: |
         pip install -r requirements.txt
 
-    - name: Obter versão
-      id: get_version
-      run: |
-        $version = Get-Content -Path src/version.txt -Raw
-        $version = $version.Trim()
-        echo "version=$version" >> $env:GITHUB_OUTPUT
+    # Etapa 6: Construir o executável
+    - name: Compilar com PyInstaller
       shell: pwsh
-
-    - name: Gerar executável
       run: |
-        pyinstaller --onefile --windowed --name SineApp `
-        --paths "C:\hostedtoolcache\windows\Python\3.11.9\x64\Lib\site-packages" `  # Caminho explícito
-        --add-data "src/assets/icons/*;assets/icons/" `
-        --add-data "src/config.json;." `
-        --add-data "src/version.txt;." `
-        --add-binary "C:\hostedtoolcache\windows\Python\3.11.9\x64\DLLs/python311.dll;." `  # Inclui a DLL
-        src/main.py
+        pyinstaller --clean --onefile --windowed `
+          --name "SineApp" `
+          --paths "$env:pythonLocation\Lib\site-packages" `
+          --add-data "src/assets/icons/*;assets/icons/" `
+          --add-data "src/config.json;." `
+          --add-data "src/version.txt;." `
+          --distpath "dist" `
+          src/main.py
 
-    - name: Publicar no GitHub Releases
+    # Etapa 7: Publicar no GitHub Releases
+    - name: Publicar Release
       uses: softprops/action-gh-release@v1
       with:
-        files: dist/SineApp.exe
-        tag_name: v${{ steps.get_version.outputs.version }}
+        files: |
+          dist/SineApp.exe
+        tag_name: "v$(Get-Content -Path src/version.txt -Raw)"
+        generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
