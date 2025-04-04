@@ -19,24 +19,24 @@ jobs:
     - name: Configurar Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'
+        python-version: '3.13'  # Alinhado com sua versão local
 
     - name: Gerar requirements.txt automaticamente
       run: |
         python -m pip install --upgrade pip
         pip install pipreqs
         pipreqs src/ --force --savepath requirements.txt
-        # Adiciona dependências manualmente (incluindo bcrypt e outras necessárias)
+        # Adicione manualmente as dependências críticas:
         echo "pyinstaller" >> requirements.txt
-        echo "bcrypt==4.0.1" >> requirements.txt
-        echo "cffi==1.15.1" >> requirements.txt  # Dependência do bcrypt
-        echo "pywin32==306" >> requirements.txt  # Necessário para PyInstaller no Windows
-        # Mostra o conteúdo gerado para debug
+        echo "bcrypt==4.1.2" >> requirements.txt  # Nome e versão corretos
+        echo "cffi==1.16.0" >> requirements.txt  # Dependência do bcrypt
+        echo "pywin32==306" >> requirements.txt   # Necessário para Windows
+        # Remova entradas inválidas (como python_bcrypt)
         type requirements.txt
 
-    - name: Instalar todas as dependências
+    - name: Instalar dependências
       run: |
-        pip install --only-binary=:all: -r requirements.txt
+        pip install -r requirements.txt  # Remova --only-binary para permitir compilação
 
     - name: Obter versão
       id: get_version
