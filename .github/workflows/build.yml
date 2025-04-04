@@ -4,50 +4,50 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: write  # Permissão necessária para criar releases
+
 jobs:
   build:
     runs-on: windows-latest
     timeout-minutes: 25
 
     steps:
-    # Etapa 1: Checkout do código
     - name: Checkout do repositório
       uses: actions/checkout@v4
 
-    # Etapa 2: Configurar Python 3.11 (versão estável)
     - name: Configurar Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
 
-    # Etapa 3: Instalar dependências críticas primeiro
     - name: Instalar ferramentas básicas
       run: |
         python -m pip install --upgrade pip
         pip install wheel setuptools
 
-    # Etapa 4: Gerar e corrigir requirements.txt
     - name: Gerar requirements.txt
       run: |
         pip install pipreqs
         pipreqs src/ --force --savepath requirements.txt --ignore *.json,*.txt,assets
-        
-        # Adições manuais
         echo "pyinstaller==6.8.0" >> requirements.txt
         echo "bcrypt==4.1.2" >> requirements.txt
         echo "cffi==1.16.0" >> requirements.txt
         echo "pywin32==306" >> requirements.txt
-        
-        # Remover entradas problemáticas
         sed -i '/python_bcrypt/d' requirements.txt
-        type requirements.txt
 
-    # Etapa 5: Instalar todas as dependências
-    - name: Instalar pacotes do requirements.txt
+    - name: Instalar pacotes
       run: |
         pip install -r requirements.txt
 
-    # Etapa 6: Construir o executável
+    - name: Obter versão
+      id: get_version
+      run: |
+        $version = Get-Content -Path src/version.txt -Raw
+        $version = $version.Trim()
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+      shell: pwsh
+
     - name: Compilar com PyInstaller
       shell: pwsh
       run: |
@@ -60,13 +60,12 @@ jobs:
           --distpath "dist" `
           src/main.py
 
-    # Etapa 7: Publicar no GitHub Releases
     - name: Publicar Release
       uses: softprops/action-gh-release@v1
       with:
-        files: |
-          dist/SineApp.exe
-        tag_name: "v$(Get-Content -Path src/version.txt -Raw)"
+        files: dist/SineApp.exe
+        tag_name: "v${{ steps.get_version.outputs.version }}"  # Corrigido
+        name: "Release v${{ steps.get_version.outputs.version }}"
         generate_release_notes: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
