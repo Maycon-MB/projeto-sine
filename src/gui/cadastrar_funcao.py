@@ -5,13 +5,13 @@ class CadastrarFuncaoWidget(QWidget):
     def __init__(self, db_connection):
         super().__init__()
         self.db_connection = db_connection
-        self.setWindowTitle("Cadastrar Nova Função")
+        self.setWindowTitle("CADASTRAR NOVA FUNÇÃO")
 
         # Layout principal
         layout = QVBoxLayout()
         
         # Rótulo e campo de entrada
-        self.label = QLabel("Nome da Função:")
+        self.label = QLabel("NOME DA FUNÇÃO:")
         self.input_funcao = QLineEdit()
         self.input_funcao.setPlaceholderText("Digite a função...")
         self.input_funcao.textChanged.connect(self.converter_para_maiusculo)
