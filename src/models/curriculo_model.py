@@ -50,7 +50,7 @@ class CurriculoModel:
         query = "SELECT nome FROM public.funcoes ORDER BY nome;"
 
         try:
-            results = self.db.execute_query(query, fetch_all=True)
+            results = self.db.execute_query(query, fetch_all=True)      
             # Converter cada resultado para um dicionário e acessar o campo 'nome'
             funcoes = [result['nome'] for result in results]
             return funcoes
@@ -113,18 +113,48 @@ class CurriculoModel:
             return False
 
     def fetch_curriculos(self, filtros):
+        # Se o filtro CPF for preenchido, usa uma query personalizada
+        if filtros.get("cpf"):
+            cpf_limpo = self.limpar_formatacao_cpf(filtros["cpf"])
+            query = """
+                SELECT 
+                    c.id AS curriculo_id,
+                    c.cpf,
+                    c.nome,
+                    DATE_PART('year', AGE(c.data_nascimento))::int AS idade,
+                    COALESCE(c.telefone, '') AS telefone,
+                    COALESCE(c.telefone_extra, '') AS telefone_extra,
+                    ci.nome AS cidade,
+                    c.escolaridade,
+                    c.tem_ctps,
+                    COALESCE(c.cep, '') AS cep,
+                    c.pcd,
+                    f.nome AS funcao,
+                    e.anos_experiencia,
+                    e.meses_experiencia
+                FROM curriculo c
+                LEFT JOIN experiencias e ON c.id = e.id_curriculo
+                LEFT JOIN cidades ci ON c.cidade_id = ci.id
+                LEFT JOIN funcoes f ON e.funcao_id = f.id
+                WHERE c.cpf = %(cpf)s
+                ORDER BY c.nome ASC, f.nome ASC;
+            """
+            params = {"cpf": cpf_limpo}
+            return self.db.execute_query(query, params, fetch_all=True)
+        
+        # Caso não haja filtro de CPF, usa a função armazenada
         query = """
             SELECT 
                 curriculo_id,
                 cpf,
                 nome,
                 idade,
-                COALESCE(telefone, '') AS telefone,       -- Converte NULL para ''
+                COALESCE(telefone, '') AS telefone,
                 COALESCE(telefone_extra, '') AS telefone_extra,
                 cidade,
                 escolaridade,
                 tem_ctps,
-                COALESCE(cep, '') AS cep,                 -- Converte NULL para ''
+                COALESCE(cep, '') AS cep,
                 pcd,
                 funcao,
                 anos_experiencia,
@@ -146,8 +176,9 @@ class CurriculoModel:
                 %(telefone_extra)s::TEXT
             )
             ORDER BY nome ASC;
-        """        
-        # Parâmetros de filtro
+        """
+        if filtros.get("cpf"):
+            filtros["cpf"] = self.limpar_formatacao_cpf(filtros["cpf"])
         params = {
             "nome": filtros.get("nome"),
             "cidade": filtros.get("cidade"),
@@ -156,7 +187,7 @@ class CurriculoModel:
             "tem_ctps": filtros.get("tem_ctps"),
             "idade_min": filtros.get("idade_min"),
             "idade_max": filtros.get("idade_max"),
-            "experiencia": filtros.get("experiencia"),  # Agora está correto!
+            "experiencia": filtros.get("experiencia"),
             "sexo": filtros.get("sexo"),
             "cpf": filtros.get("cpf"),
             "cep": filtros.get("cep"),
@@ -164,8 +195,6 @@ class CurriculoModel:
             "telefone": filtros.get("telefone", ""),
             "telefone_extra": filtros.get("telefone_extra", "")
         }
-        
-        # Executa a consulta
         return self.db.execute_query(query, params, fetch_all=True)
 
     def get_curriculo_by_id(self, curriculo_id):

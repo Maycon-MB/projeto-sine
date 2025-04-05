@@ -27,11 +27,7 @@ class MainWindow(QMainWindow):
         config = ConfiguracoesWidget.load_configurations()
         self.current_theme = config.get("theme", "light")
 
-        # Diretório base do projeto
-        self.base_dir = Path(__file__).resolve().parent
-        # Caminho corrigido para os ícones:
-        self.icons_dir = self.base_dir / "assets" / "icons" if (self.base_dir / "assets" / "icons").exists() else self.base_dir.parent / "assets" / "icons"
-
+        self.icons_dir = Path(__file__).resolve().parent / "assets" / "icons"
         # Inicializar modelos
         self.db_connection = db_connection
         self.usuario_model = UsuarioModel(self.db_connection)
