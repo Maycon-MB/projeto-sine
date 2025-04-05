@@ -321,16 +321,7 @@ BEGIN
     JOIN
         curriculo c ON cb.id = c.id
     LEFT JOIN
-        ranked_experiencias re ON c.id = re.curriculo_id
-        -- Verifica se TODOS os filtros são NULL diretamente
-        AND (
-            p_nome IS NULL AND p_cidade IS NULL AND p_escolaridade IS NULL AND
-            p_funcao IS NULL AND p_tem_ctps IS NULL AND p_idade_min IS NULL AND
-            p_idade_max IS NULL AND p_experiencia IS NULL AND p_sexo IS NULL AND
-            p_cpf IS NULL AND p_cep IS NULL AND p_pcd IS NULL AND
-            p_telefone IS NULL AND p_telefone_extra IS NULL
-        )
-        AND re.rank_exp = 1
+        ranked_experiencias re ON c.id = re.curriculo_id AND re.rank_exp = 1  -- Condição simplificada
     LEFT JOIN
         cidades ci ON c.cidade_id = ci.id
     WHERE
